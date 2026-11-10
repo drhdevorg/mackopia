@@ -22,7 +22,7 @@ struct WebDAVFixture {
             "FIXTURE_USER": username, "FIXTURE_PASSWORD": password,
         ]
         process.standardInput = control; process.standardOutput = readiness;
-        process.standardError = FileHandle.standardError  // TEMP CI DIAGNOSIS
+        process.standardError = FileHandle.nullDevice
         try process.run()
         do {
             let fd = readiness.fileHandleForReading.fileDescriptor
