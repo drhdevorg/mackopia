@@ -39,7 +39,7 @@ enum PreviewData {
                                     startedAt: .now.addingTimeInterval(-600), endedAt: .now.addingTimeInterval(-540),
                                     dueAt: .now.addingTimeInterval(86_400), outcome: .failed)
                                 : nil,
-                            testRestore: nil, maintenance: nil)
+                            testRestore: nil, maintenance: nil, issue: issue)
                     ])
             connection.message = issue.map(AgentConnection.description)
         } catch { connection.message = AgentConnection.description(.invalidRequest) }

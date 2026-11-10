@@ -55,6 +55,10 @@ struct FoundationView: View {
                                     if connection.state?.issue == .permissions {
                                         Button("Festplattenvollzugriff öffnen…") { connection.openPrivacySettings() }
                                     }
+                                    if let planID = connection.planWithoutBackupToVerify {
+                                        Button("Jetzt sichern") { connection.runSelected(planID) }
+                                            .disabled(connection.busy)
+                                    }
                                     if let route = AppRoute.route(for: connection.state?.issue) {
                                         Button(route.issueActionTitle) { savedRoute = route.rawValue }
                                     }
@@ -232,4 +236,5 @@ struct FoundationView: View {
 #Preview("Plans") { FoundationView().environment(PreviewData.connection()) }
 #Preview("Empty") { FoundationView().environment(PreviewData.connection(empty: true)) }
 #Preview("Permissions") { FoundationView().environment(PreviewData.connection(issue: .permissions)) }
+#Preview("Nothing to verify") { FoundationView().environment(PreviewData.connection(issue: .noBackupToVerify)) }
 #Preview("Offline") { FoundationView().environment(AgentConnection(preview: true)) }

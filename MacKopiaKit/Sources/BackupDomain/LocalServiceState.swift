@@ -33,7 +33,9 @@ public struct LocalServiceState: Codable, Sendable {
 
 public enum LocalServiceIssue: String, Error, Codable, Sendable, LocalizedError, CustomDebugStringConvertible {
     case invalidRequest, busy, unavailable, safeMode, keychain, permissions, destination, backupFailed,
-        automationUnavailable, verificationFailed, maintenanceFailed, planPaused, waitingConditions
+        automationUnavailable, verificationFailed, maintenanceFailed, planPaused, waitingConditions,
+        /// An explicit check found no successful backup to verify.
+        noBackupToVerify
     public var errorDescription: String? { String(localized: "Dienstanfrage fehlgeschlagen.") }
     public var debugDescription: String { "Local service: " + rawValue }
 }

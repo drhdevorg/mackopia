@@ -25,6 +25,16 @@ struct DailyRuntimeTests {
         #expect(await fixture.issues.values.isEmpty)
     }
 
+    @Test func checkThatNeverRanReportsItsReasonInsteadOfAFailedVerification() async throws {
+        let fixture = try await AutomaticRuntimeFixture(triggers: [.manual])
+        let runtime = try fixture.runtime(check: { _ in throw LocalServiceIssue.noBackupToVerify })
+        try await runtime.start()
+        try await runtime.requestCheck(fixture.plan.id)
+        try await waitForRuntime { await !fixture.issues.values.isEmpty }
+        await runtime.shutdown()
+        #expect(await fixture.issues.values == [.checkNotStarted(planID: fixture.plan.id, reason: .noBackupToVerify)])
+    }
+
     @Test func maintenanceIsSerialAndPauseCancelsItBeforeStartingAnotherBackup() async throws {
         let fixture = try await AutomaticRuntimeFixture(triggers: [.manual])
         let probe = DailyWorkProbe()

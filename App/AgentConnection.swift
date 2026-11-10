@@ -144,6 +144,11 @@ final class AgentConnection {
         }
     }
     func cancelOperation() { commandTask?.cancel() }
+    /// The plan whose explicit check found no backup yet; the window offers to back it up.
+    var planWithoutBackupToVerify: UUID? {
+        guard state?.issue == .noBackupToVerify else { return nil }
+        return state?.plans.first { $0.issue == .noBackupToVerify }?.planID
+    }
     func runSelected(_ id: UUID? = nil) {
         guard let id = id ?? state?.configuration?.plans.first?.id else { return }
         send(.run(id))
@@ -246,6 +251,8 @@ final class AgentConnection {
         case .verificationFailed:
             String(
                 localized: "Prüfung nicht erfolgreich. Prüfe Speicherziel und Aktivität und starte die Prüfung erneut.")
+        case .noBackupToVerify:
+            String(localized: "Noch kein Backup zum Prüfen. Sichere zuerst und starte die Prüfung danach.")
         case .maintenanceFailed:
             String(localized: "Wartung nicht abgeschlossen. Prüfe das Speicherziel und die Aktivität.")
         case .permissions:

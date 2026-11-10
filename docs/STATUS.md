@@ -68,17 +68,19 @@ Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Bas
   Drop erreicht in gruppierter `Form` nur Section/Form (Test-Harness: List/ForEach-Drop feuert dort nie) und
   Startroute wurde vom Fensteraufbau überschrieben (jetzt in `.task`). Menüleisten-Fenster selbst nicht bedienbar
   (Computer Use findet den Agent nicht); Routen-Mechanik direkt ausgelöst. Kein XCUITest vorhanden.
-- Teilweise behoben: Aktivität zeigt neben Backup-Läufen die jeweils letzte
+- Behoben: Aktivität zeigt neben Backup-Läufen die jeweils letzte
   Integritätsprüfung, Testwiederherstellung und Wartung je Plan (`ActivityEntry`, Spalten Vorgang/Plan, Fehler rot
   mit Symbol); `LocalServiceState.activeWork` unterscheidet Backup/Prüfung/Abschluss/Wartend für Übersicht und
   Menüleiste. Ältere Prüfungen bleiben ungespeichert (nur letzter Stand je Plan). Offen: Drop-Reihenfolge folgt Finder.
   Prüfung: 575 Tests, nur die 6 bekannten TLS-Suites rot; WebDAV-Lebenszyklus deckte eine Lese-Reihenfolge-Race in
   `currentWork()` auf (behoben, danach 3× grün). Xcode `build test` grün, keine Warnung, Lint sauber.
-- Live 2026-11-10 (bc23fe3): neue Spalten und „Integritätsprüfung läuft“ bestätigt. **Weiter offen:** Prüfung ohne
-  erfolgreiches Backup bzw. ohne erreichbares Ziel scheitert vor dem Kopia-Aufruf, speichert absichtlich keinen
-  Nachweis (`SnapshotVerificationEngine`) und meldet trotzdem `verificationFailed` → „Aktivität anzeigen“ führt
-  weiter ins Leere. Neubau-Ablauf: Freigabe aus/an, dann in der App „Hintergrunddienst aktivieren“; Keychain-Abfrage
-  des neuen Agents bestätigt der Nutzer.
+- Live 2026-11-10 (bc23fe3): neue Spalten und „Integritätsprüfung läuft“ bestätigt. Prüfung, die vor dem
+  Kopia-Aufruf scheitert, speichert absichtlich keinen Nachweis; sie meldet jetzt ihren Grund statt `verificationFailed`
+  (`SnapshotVerificationEngine.attemptVerification`, `AutomaticBackupIssue.checkNotStarted`): Preflight-Ablehnung →
+  dieselbe Zuordnung wie Backups (`LocalBackupService.failure(for:)`, z. B. „Speicherziele anzeigen“), kein erfolgreiches
+  Backup → neues `noBackupToVerify` mit „Jetzt sichern“. Live: Ziel-Fall bestätigt (Temp-Root war gelöscht);
+  „Noch kein Backup zum Prüfen“ nur durch Tests belegt. Vollsuite seriell 577 Tests, nur 6 TLS-Suites rot.
+  Neubau-Ablauf: Freigabe aus/an, dann in der App „Hintergrunddienst aktivieren“, Keychain-Abfrage durch Nutzer.
 - Live 2026-11-10 gefunden und behoben: „Hintergrunddienst aktivieren“ blieb bei `requiresApproval` und bei
   „enabled“ ohne startbaren launchd-Job stumm. Jetzt Freigabehinweis + Anmeldeobjekte bzw. explizite Reparatur
   (unregister/register, nur ohne Verbindung). 10 Registrierungstests grün; Hinweis live in der App gesehen.
@@ -112,11 +114,11 @@ Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Bas
 
 Einstieg: PROJEKT.md §4–§5, §11–§14 Phase 5, AGENTS.md §7, IMPLEMENTIERUNG.md und Audit oben.
 Native Verbindung und Dienstregistrierung sind positiv belegt; Freigabe für Temp-Workflow liegt vor.
-Temp-Root: `/private/tmp/mackopia-live-audit-xp05r3_k`. Fenster/Menüleiste/Shortcuts,
+Fenster/Menüleiste/Shortcuts,
 Fehleraktionen/Remote-Assistenten prüfen; DE/EN, Light/Dark/Kontrast, minimales Fenster, Tastatur/VoiceOver
 mit Screenshots erfassen und Instruments Idle-CPU/Speicher/I/O/Updatefrequenz messen.
 FDA-Freigabe abgelehnt; geschützten Live-Lauf erst nach einer neuen ausdrücklichen Freigabe fortsetzen.
-Zuerst Prüfmeldung ohne Nachweis entscheiden und beheben (siehe oben). Danach Quellen-/Snapshot-Pagination; keine spekulativen Frameworks/Entitlements. Registrierung/FDA/Keychain
+Temp-Root `/private/tmp/mackopia-live-audit-xp05r3_k` ist gelöscht: für weitere Live-Läufe neues Temp-Ziel einrichten. Danach Quellen-/Snapshot-Pagination; keine spekulativen Frameworks/Entitlements. Registrierung/FDA/Keychain
 nur mit bewussten nötigen Systemfreigaben; reale Provider/Hardware bleiben separat.
 Fertig: belegter integrierter Audit, behobene Befunde mit Tests, relevante Prüfungen und kompakte Übergabe.
 Name/Bundle-Präfix MacKopia / com.example.MacKopia; Lizenzmodell offen.

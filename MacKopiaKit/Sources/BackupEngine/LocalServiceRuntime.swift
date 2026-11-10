@@ -42,8 +42,16 @@ extension LocalBackupService {
             verification: AutomaticSnapshotVerification(engine: verification, history: history, now: now),
             testRestore: AutomaticTestRestore(engine: verification, history: history, now: now),
             check: { id in
-                guard try await verification.verify(planID: id) != nil else {
-                    throw LocalServiceIssue.verificationFailed
+                let attempt: SnapshotVerificationEngine.Attempt
+                do { attempt = try await verification.attemptVerification(planID: id) } catch {
+                    // Nothing was checked: point to the backup the check needs, not to empty activity.
+                    if error as? BackupOperationError == .snapshotMissing { throw LocalServiceIssue.noBackupToVerify }
+                    throw error
+                }
+                switch attempt {
+                case .recorded: return
+                case .declined(let report): throw LocalBackupService.failure(for: report)
+                case .inconclusive: throw LocalServiceIssue.verificationFailed
                 }
             },
             maintenance: { run in
@@ -99,19 +107,20 @@ extension LocalBackupService {
             }
         }
         guard report.outcome != .checksPassed else { changed(); return }
-        let failure: LocalServiceIssue
-        if report.checks.contains(where: { $0.action == .reviewRunConditions }) {
-            failure = .waitingConditions
-        } else if report.checks.contains(where: { $0.action == .checkSourceAccess }) {
-            failure = .permissions
-        } else if report.checks.contains(where: { $0.action == .checkKeychain || $0.action == .enterBackupPassword }) {
-            failure = .keychain
-        } else {
-            failure = .destination
-        }
+        let failure = Self.failure(for: report)
         planIssues[planID] = failure
         if failure != .waitingConditions { issue = failure }
         changed()
+    }
+
+    /// The one fixed reason a declined preflight shows the user; shared by backups and explicit checks.
+    static func failure(for report: BackupPreflightReport) -> LocalServiceIssue {
+        if report.checks.contains(where: { $0.action == .reviewRunConditions }) { return .waitingConditions }
+        if report.checks.contains(where: { $0.action == .checkSourceAccess }) { return .permissions }
+        if report.checks.contains(where: { $0.action == .checkKeychain || $0.action == .enterBackupPassword }) {
+            return .keychain
+        }
+        return .destination
     }
 
     func runtimeIssue(_ failure: AutomaticBackupIssue) {
@@ -122,6 +131,7 @@ extension LocalBackupService {
         case .verificationFailed(let plan), .testRestoreFailed(let plan): issue = .verificationFailed; id = plan
         case .maintenanceFailed(let plan): issue = .maintenanceFailed; id = plan
         case .ejectionFailed(let plan): issue = .destination; id = plan
+        case .checkNotStarted(let plan, let reason): issue = reason; id = plan
         case .backupFailed(let plan), .admissionRejected(let plan): issue = .backupFailed; id = plan
         case .suspiciousSnapshot(let plan, _): issue = .backupFailed; id = plan
         }
