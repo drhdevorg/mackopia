@@ -32,7 +32,7 @@ Alte Phasen-/Batch-Nummern in Kommentaren und Protokollen sind historische Refer
 | Automatik | AutomaticBackupRuntime/Controls/State, Scheduler, Monitore, Retry/Pausen/Recovery/Historienabgleich | Als alleiniger Queue-/Engine-Besitzer verdrahtet; Pausen/Termine/Recovery und Live-Neustart über XPC/UI |
 | Vertrauen | Health, Plausibilität/Pinning, SnapshotVerificationEngine, AutomaticSnapshotVerification, AutomaticTestRestore | PlanRuntimeState/PlanRuntimeView zeigen Health/Folgeaktionen und dauerhafte Prüfnachweise; AgentNotifications |
 | Wartung | MaintenanceCoordinator, FilesystemMaintenanceInspection, KopiaMaintenanceReader/Runner | Frische Owner-/Terminprüfung, automatische serielle Nacharbeit und dauerhafte Ziel-Evidenz verdrahtet |
-| XPC | AgentSigningIdentity, AgentServiceClient/Server, AgentWirePacket/Request, AgentServiceRegistration; Version 7, Grenzen/Korrelation, asynchrone Antworten, Revisionsbeobachtung/Reconnect | Echter registrierter positiver/negativer Peer-Test; weitere Requests in Folgephasen |
+| XPC | AgentSigningIdentity, AgentServiceClient/Server, AgentWirePacket/Request, AgentServiceRegistration; Version 8, Grenzen/Korrelation, asynchrone Antworten, Revisionsbeobachtung/Reconnect | Echter registrierter positiver/negativer Peer-Test; weitere Requests in Folgephasen |
 | UI | App/AgentConnection, LocalSetupStore/View, PlanEditorStore/View, FoundationView/Settings, PreviewData; Agent/AgentRuntimeStore und echte Menüleiste; DE/EN | RestoreStore/View/Sheet, SnapshotMetadataSheet, RestorePreviewData und RecoveryKit DE/EN verdrahtet; Quellen per Drag-and-drop (an der Section, nicht an der List), Entf/Kontextmenü und Undo (`SourceListEdit`); Navigation über `AppRoute` aus Befehlen, Health-/Fehleraktionen und Menüleiste; Aktivität führt Läufe plus letzte Prüf-/Wartungsnachweise (`ActivityEntry`), laufende Arbeit typisiert (`ActiveWork`). Live-Design-/A11y-/Druckabnahme offen |
 | Restore | LocalServiceRestore/Utilities, RestoreBrowser/Destination, RestoreState/SearchMatch | Gemeinsame Gate-/Runtime-Steuerung, Ziel-/Ausgabe-UUIDs, Snapshot-Abstammung, Abbruch/Fortschritt und Vorschau-Cleanup; kein Originalquellenzugriff |
 | System | UUID-Monitore, DiskArbitration-Schutz, Network/Energie/Wake, SleepAssertion | Live-Berechtigungsnachweise und gebündelte UI-/A11y-/Performance-Abnahme |
@@ -75,7 +75,7 @@ Alte Phasen-/Batch-Nummern in Kommentaren und Protokollen sind historische Refer
 
 ## Restore-/Recovery-Pfad
 
-- AgentProtocol Version 7 trägt Snapshot-ID/Namenskomponenten; der Client kann keine rohen Kopia-Objekt-IDs wählen.
+- AgentProtocol Version 8 trägt Snapshot-ID/Namenskomponenten und den Seitenanfang (`entryOffset`); der Client kann keine rohen Kopia-Objekt-IDs wählen.
 - LocalServiceRestore reserviert Automatiksteuerung/Gate bis Server-Shutdown/Reaping; liest frische Konfiguration,
   prüft Binary/isoliertes Binding/Keychain und schützt Speicherziel plus Ausgabevolume. Keine Originalquelle nötig.
 - RestoreBrowser löst jede Auswahl aus frischen Manifesten/Verzeichnissen auf und übernimmt gespeicherte Namensbytes.
@@ -127,8 +127,9 @@ Alte Phasen-/Batch-Nummern in Kommentaren und Protokollen sind historische Refer
 
 ## Bekannte technische Grenzen
 
-- Restore-Browser: maximal 128 Quellen/1.000 Snapshots/8 MiB, maximal 2.000 Einträge pro Verzeichnis;
-  größere Bestände werden abgewiesen. Suche: 256 Verzeichnisse/10.000 Einträge/500 Treffer/Tiefe 64, sichtbare Grenze.
+- Restore-Browser: Katalog maximal 1.024 Quellen/10.000 Snapshots/8 MiB, Verzeichnisse bis 50.000 Einträge in
+  Seiten zu 500 (`RestorePager`); größere Bestände werden abgewiesen. Dateitreffer öffnen die Seite mit der Datei
+  (`reveal`). Suche: 256 Verzeichnisse/10.000 Einträge/500 Treffer/Tiefe 64, sichtbare Grenze.
 - Kein Überschreiben/Originalort-Restore freigegeben; neuer privater Ordner bleibt der sichere Standard.
 - Live-Restore-/Quick-Look-Durchgang, Drucklayout/PDF und DE/EN-/A11y-Abnahme ausstehend.
 - Nach hartem Dienstabbruch bleiben Vorschauen bis zum nächsten Dienststart; Startup-Cleanup ist regressionsgeprüft.

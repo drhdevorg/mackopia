@@ -3,7 +3,9 @@ import Foundation
 
 @MainActor
 enum RestorePreviewData {
-    static func store(phase: RestoreState.Phase = .idle, empty: Bool = false, offline: Bool = false) -> RestoreStore {
+    static func store(
+        phase: RestoreState.Phase = .idle, empty: Bool = false, offline: Bool = false, largeFolder: Bool = false
+    ) -> RestoreStore {
         let connection = PreviewData.connection()
         let store = RestoreStore(connection: connection)
         guard let repositoryID = connection.state?.configuration?.repositories.first?.id else { return store }
@@ -21,9 +23,16 @@ enum RestorePreviewData {
                 RestoreEntry(name: "Documents", isDirectory: true, bytes: 0),
                 RestoreEntry(name: "Example.pdf", isDirectory: false, bytes: 4096),
             ]
+            if largeFolder {
+                store.entries = (1...500).map {
+                    RestoreEntry(name: "Foto \($0).heic", isDirectory: false, bytes: 2_000_000)
+                }
+                store.entryOffset = 500; store.entryTotal = 12_345
+            }
         }
         var state = RestoreState(repositoryID: repositoryID)
         state.snapshots = store.snapshots; state.snapshotID = store.selectedSnapshotID; state.entries = store.entries
+        state.entryOffset = store.entryOffset; state.entryTotal = store.entryTotal
         state.phase = phase
         if phase != .idle {
             state.operationID = UUID(); state.bytes = 4096; state.files = 1;

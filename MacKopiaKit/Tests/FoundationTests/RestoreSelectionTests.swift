@@ -14,7 +14,10 @@ struct RestoreSelectionTests {
             Array(repeating: "a", count: 65),
         ] {
             #expect(throws: LocalServiceIssue.invalidRequest) {
-                try AgentRequest(.browse(repositoryID: UUID(), snapshotID: id, components: path)).validate()
+                try AgentRequest(
+                    .browse(repositoryID: UUID(), snapshotID: id, components: path, entryOffset: 0, reveal: nil)
+                )
+                .validate()
             }
         }
         for invalid in ["", "../manifest", "https://example.org", String(repeating: "a", count: 129)] {
@@ -22,8 +25,12 @@ struct RestoreSelectionTests {
                 try RestoreSelection.validate(snapshotID: invalid, components: [])
             }
         }
-        try AgentRequest(.browse(repositoryID: UUID(), snapshotID: id, components: ["Documents", "Überblick.txt"]))
-            .validate()
+        try AgentRequest(
+            .browse(
+                repositoryID: UUID(), snapshotID: id, components: ["Documents", "Überblick.txt"], entryOffset: 0,
+                reveal: nil)
+        )
+        .validate()
         #expect(throws: LocalServiceIssue.invalidRequest) {
             try AgentRequest(.searchRestore(repositoryID: UUID(), snapshotID: id, query: "")).validate()
         }

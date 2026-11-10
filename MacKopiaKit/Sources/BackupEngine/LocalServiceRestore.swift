@@ -5,8 +5,15 @@ import KopiaServer
 import SystemIntegration
 
 extension LocalBackupService {
-    public func browse(repositoryID: UUID, snapshotID: String?, components: [String]) async throws {
+    public func browse(
+        repositoryID: UUID, snapshotID: String?, components: [String], entryOffset: Int = 0, reveal: String? = nil
+    ) async throws {
         try RestoreSelection.validate(snapshotID: snapshotID, components: components)
+        guard RestoreSelection.validEntryOffset(entryOffset), snapshotID != nil || entryOffset == 0,
+            reveal.map({ RestoreSelection.validComponent($0) && snapshotID != nil && entryOffset == 0 }) ?? true
+        else {
+            throw LocalServiceIssue.invalidRequest
+        }
         try availableForMutation()
         guard restoreTask == nil else { throw LocalServiceIssue.busy }
         let value = try await withRestoreSession(repositoryID: repositoryID, destination: nil) { service in
@@ -15,7 +22,11 @@ extension LocalBackupService {
             value.snapshots = try await browser.snapshots()
             value.snapshotID = snapshotID; value.components = components
             if let snapshotID {
-                value.entries = try await browser.entries(snapshotID: snapshotID, components: components)
+                let entries = try await browser.entries(
+                    snapshotID: snapshotID, components: components, catalog: value.snapshots)
+                let offset = try reveal.map { try RestoreBrowser.offset(revealing: $0, in: entries) } ?? entryOffset
+                value.entries = Array(try RestoreBrowser.page(entries, offset: offset))
+                value.entryOffset = offset; value.entryTotal = entries.count
             }
             return value
         }
