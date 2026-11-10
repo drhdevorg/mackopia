@@ -181,3 +181,23 @@ Export benötigte Instruments-Cache-Freigabe; Sandbox-Versuch scheiterte vor der
   Nutzer lehnt FDA-Freigabe ausdrücklich ab; noch kein Live-Backup/-Restore.
 - Vorheriger SFTP-Abschluss und einmalige WebDAV-Prüfablehnung samt unverändert erfolgreicher Diagnose:
   [Phase-4-Evidenz](history/STATUS-Phase4-SFTP-Abschluss-2026-10-26.md). Im aktuellen Vollauf WebDAV grün.
+
+## Live-Versuch Claude, 2026-11-10 (macOS 27.2 26B123, Xcode 27.1)
+
+Ziel: neue Bedienwege live prüfen. Temp-Ordner `/private/tmp/mackopia-live-audit-6pdyHklh`; Konfiguration leer.
+
+1. BTM-Eintrag des Agents war `enabled, disallowed` (Hintergrundaktivität im System aus). `register()` kehrte bei
+   `requiresApproval` stumm zurück. Fix: Rückgabestatus, Hinweis DE/EN, Anmeldeobjekte öffnen. Live bestätigt.
+2. Nach Nutzerfreigabe `enabled, allowed`, aber kein Agent-Prozess: launchd `job state = spawn failed`,
+   `last exit code = 78: EX_CONFIG`, später „Could not find and/or execute program“. App-Knopf blieb bei „enabled“ stumm.
+   Fix: explizite Reparatur (unregister/register) nur bei Nutzeraktion ohne Verbindung; Tests mit Fake-Dienst.
+3. Eigentliche Ursache nach Reparatur sichtbar: `xpcproxy exited due to OS_REASON_CODESIGNING | Launch Constraint
+   Violation, error info: c[5]p[1]m[1]e[0], (Constraint not matched) launch type 0` für
+   `…/MacKopia.app/Contents/Library/LoginItems/MacKopia Agent.app/Contents/MacOS/MacKopia Agent`;
+   Kernel/AMFI: `_process_matches_constraint: Requirement not satisfied`. launchd entfernt den Job nach
+   wiederholtem Fehlschlag. App/Agent ad-hoc + Hardened Runtime, keine Team-ID, `com.apple.provenance` gesetzt.
+   macOS 27.2 seit 27.10.; letzter erfolgreicher Agent-Lauf laut BTM 28.10. Ursache noch nicht isoliert.
+   Keine System-/BTM-Datenbank verändert; Hintergrundfreigabe hat der Nutzer selbst gesetzt.
+
+Nebenbefund Umgebung: Command Line Tools 27.2 am 10.11. installiert, `xcode-select` zeigt seither auf CLT;
+Builds liefen mit `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.

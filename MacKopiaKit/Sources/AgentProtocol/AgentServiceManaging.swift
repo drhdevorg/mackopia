@@ -4,6 +4,7 @@ import ServiceManagement
 protocol AgentServiceManaging {
     var status: AgentServiceRegistration.Status { get }
     func register() throws
+    func unregister() async throws
     func openLoginItemsSettings()
 }
 
@@ -22,5 +23,6 @@ struct SystemAgentService: AgentServiceManaging {
     }
 
     func register() throws { try service.register() }
+    func unregister() async throws { try await service.unregister() }
     func openLoginItemsSettings() { SMAppService.openSystemSettingsLoginItems() }
 }

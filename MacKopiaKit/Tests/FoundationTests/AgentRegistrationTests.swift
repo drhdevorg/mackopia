@@ -6,6 +6,8 @@ import Testing
 private final class FakeService: AgentServiceManaging {
     var status: AgentServiceRegistration.Status = .notRegistered
     var registerCalls = 0
+    var unregisterCalls = 0
+    var unregisterFailure: AgentServiceError?
     var settingsCalls = 0
     var failure: AgentServiceError?
     var afterRegister: AgentServiceRegistration.Status = .enabled
@@ -14,6 +16,12 @@ private final class FakeService: AgentServiceManaging {
         registerCalls += 1
         status = afterRegister
         if let failure { throw failure }
+    }
+
+    func unregister() async throws {
+        unregisterCalls += 1
+        if let unregisterFailure { throw unregisterFailure }
+        status = .notRegistered
     }
 
     func openLoginItemsSettings() { settingsCalls += 1 }
@@ -84,4 +92,45 @@ private final class FakeService: AgentServiceManaging {
     let registration = AgentServiceRegistration(service: service, validateSignature: {})
     #expect(throws: AgentServiceError.registrationFailed) { try registration.register() }
     #expect(service.registerCalls == 1)
+}
+
+@Test @MainActor func backgroundApprovalIsReportedForExistingAndNewRegistrations() throws {
+    let service = FakeService()
+    service.status = .requiresApproval
+    let registration = AgentServiceRegistration(service: service, validateSignature: {})
+    #expect(try registration.register() == .requiresApproval)
+    #expect(service.registerCalls == 0)
+    service.status = .notRegistered
+    service.afterRegister = .requiresApproval
+    #expect(try registration.register() == .requiresApproval)
+    service.afterRegister = .enabled
+    service.status = .notRegistered
+    #expect(try registration.register() == .enabled)
+}
+
+@Test @MainActor func repairReregistersOnlyAnEnabledService() async throws {
+    let service = FakeService()
+    service.status = .enabled
+    let registration = AgentServiceRegistration(service: service, validateSignature: {})
+    #expect(try await registration.repair() == .enabled)
+    #expect(service.unregisterCalls == 1)
+    #expect(service.registerCalls == 1)
+
+    service.status = .requiresApproval
+    #expect(try await registration.repair() == .requiresApproval)
+    #expect(service.unregisterCalls == 1)
+    #expect(service.registerCalls == 1)
+}
+
+@Test @MainActor func repairChecksSignatureAndTypesUnregisterFailure() async {
+    let service = FakeService()
+    service.status = .enabled
+    let unsigned = AgentServiceRegistration(service: service) { throw AgentServiceError.signingRequired }
+    await #expect(throws: AgentServiceError.signingRequired) { try await unsigned.repair() }
+    #expect(service.unregisterCalls == 0)
+
+    service.unregisterFailure = .unavailable
+    let registration = AgentServiceRegistration(service: service, validateSignature: {})
+    await #expect(throws: AgentServiceError.registrationFailed) { try await registration.repair() }
+    #expect(service.registerCalls == 0)
 }

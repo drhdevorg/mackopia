@@ -63,13 +63,17 @@ Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Bas
 - Xcode `build test` (`-parallel-testing-enabled NO`): **grün**, 4 Bundle-/Signaturtests, keine Compilerwarnung;
   `/tmp/mackopia-p5-claude-xcode.log`. Strikter Format-Lint und `git diff --check` sauber; neue Strings DE/EN.
 - **Nicht live geprüft:** Drop/Entf/Undo im Editor, Menüleisten-Navigation (laufende und neu gestartete App),
-  Fehleraktions-Buttons. Kein XCUITest vorhanden.
+  Fehleraktions-Buttons. Kein XCUITest vorhanden. Blockiert durch Dienststart unter macOS 27.2 (siehe Ledger).
+- Live 2026-11-10 gefunden und behoben: „Hintergrunddienst aktivieren“ blieb bei `requiresApproval` und bei
+  „enabled“ ohne startbaren launchd-Job stumm. Jetzt Freigabehinweis + Anmeldeobjekte bzw. explizite Reparatur
+  (unregister/register, nur ohne Verbindung). 10 Registrierungstests grün; Hinweis live in der App gesehen.
 - Vorherige Codex-Evidenz (Registrierung, Editor-Sheets, Instruments-Idle, Temp-Ziel, FDA-Block): Audit unten.
 
 ## Offene Live-Nachweise und Grenzen – kein globaler Entwicklungsstopp
 
 | Nachweis | Betroffene Funktion | Exakte nächste Aktion / Besitzer |
 |---|---|---|
+| **macOS 27.2 (26B123): AMFI „Launch Constraint Violation (Constraint not matched)“ beim Start des ad-hoc-signierten Agents** | Gesamter Dienst, damit jeder Live-Test; ggf. kontoloser Vertrieb | Agent + Nutzer: Constraint-Art bestimmen (Parent-/Responsible-Constraint, ad-hoc-cdhash nach Neubau, BTM-Altdaten); Neustart des Macs als erster Versuch, kein `sfltool resetbtm` ohne Zustimmung. Letzter Agent-Lauf 28.10. (27.2 seit 27.10.); Log-Auszug im Audit |
 | Native Verbindung wieder erreichbar, Agent-Fensteraufruf einmal Timeout | UI-/A11y-/Performance-Audit | Agent: App-Fenster weiter auditieren; MenuBarExtra separat öffnen |
 | Reales WebDAV/TLS/Anbieter | Provider-Kompatibilität | Nutzer stellt explizit entbehrlichen HTTPS-Testordner bereit; Agent prüft Create/Connect/Backup/Restore/Credential-Wechsel |
 | Reales S3/IAM/TLS/Token-Ablauf | Provider-Kompatibilität | Nutzer stellt explizit entbehrlichen Bucket/Präfix bereit; Agent prüft Create/Connect/Backup/Restore und Credential-Wechsel |

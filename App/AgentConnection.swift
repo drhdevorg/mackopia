@@ -79,25 +79,40 @@ final class AgentConnection {
             }
         }
     }
+    /// Explicit user action. An "enabled" service that is still unreachable is re-registered, because macOS can
+    /// keep an enabled record whose launchd job is missing; a connected service is never touched.
     func enable() {
         registrationMessage = nil
-        do {
-            guard let registration else { throw AgentServiceError.invalidIdentity }
-            try registration.register()
-            reconnect()
-        } catch {
-            switch error as? AgentServiceError {
-            case .signingRequired, .invalidIdentity:
-                registrationMessage = String(
-                    localized:
-                        "Hintergrunddienst nicht aktiviert. Die App-Signatur konnte nicht geprüft werden. Öffne eine unveränderte MacKopia-App und versuche es erneut."
-                )
-            default:
-                registrationMessage = String(
-                    localized:
-                        "Hintergrunddienst nicht aktiviert. Prüfe MacKopia in den Anmeldeobjekten und versuche es erneut."
-                )
-            }
+        guard let registration else { return showRegistrationFailure(.invalidIdentity) }
+        let repair = !connected && registration.status == .enabled
+        Task {
+            do {
+                let status = repair ? try await registration.repair() : try registration.register()
+                if status == .requiresApproval {
+                    // Kept off by macOS (Login Items › Allow in the Background); registering again changes nothing.
+                    registrationMessage = String(
+                        localized:
+                            "Hintergrunddienst wartet auf deine Freigabe. Erlaube MacKopia in den Systemeinstellungen unter Anmeldeobjekte im Hintergrund und verbinde dich dann erneut."
+                    )
+                    registration.openLoginItemsSettings()
+                    return
+                }
+                reconnect()
+            } catch { showRegistrationFailure(error as? AgentServiceError) }
+        }
+    }
+    private func showRegistrationFailure(_ error: AgentServiceError?) {
+        switch error {
+        case .signingRequired, .invalidIdentity:
+            registrationMessage = String(
+                localized:
+                    "Hintergrunddienst nicht aktiviert. Die App-Signatur konnte nicht geprüft werden. Öffne eine unveränderte MacKopia-App und versuche es erneut."
+            )
+        default:
+            registrationMessage = String(
+                localized:
+                    "Hintergrunddienst nicht aktiviert. Prüfe MacKopia in den Anmeldeobjekten und versuche es erneut."
+            )
         }
     }
     func reconnect() { observation?.cancel(); observation = nil; start() }
