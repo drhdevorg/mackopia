@@ -219,3 +219,16 @@ Builds liefen mit `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
   Ein Autor folgert: ad-hoc-Builds überleben unter SMAppService kein Update.
 - Folge: Mit kontoloser Ad-hoc-Signatur bricht vermutlich jedes Sparkle-Update den Hintergrunddienst. Nicht mit einem
   echten Update-Lauf bewiesen; Produktentscheidung offen. Die neue Reparaturtaste behebt diesen Fall nicht.
+
+### Freigabe erneuert den Pin; Live-Abnahme der Bedienwege (Claude, 2026-11-10)
+
+- BTM-Einträge verschwanden nach Freigabe-aus + Löschen des Builds nicht. Neu registrieren + Freigabe ein startete den
+  Agent sofort (`Successfully spawned`); späteres Aus/Ein allein pinnt ebenfalls den aktuellen Build.
+  Ad-hoc-Builds unveränderter Quellen sind reproduzierbar (gleiche cdhash).
+- Drop-Harness (Scratchpad, echte Finder-Drags): List/ForEach/onInsert/onDrop/Box allein funktionieren; in gruppierter
+  `Form` feuern `dropDestination` an verschachtelter List, deren Zeilen und ForEach nie, an Section/Form sowie
+  `onDrop` an der List schon. MacKopia nutzt jetzt `dropDestination` an der Quellen-Section.
+- Kaltstart mit `-MacKopiaRoute destinations` landete zunächst auf Übersicht; Anwendung in `.task` behebt es.
+- Prüfen ohne erreichbares Altziel zeigte die Fenstermeldung mit „Aktivität anzeigen“; Ziel korrekt, Liste ohne Prüfeintrag.
+- Ein SecurityAgent-Dialog erschien während der Prüfung (vermutlich Schlüsselbund-Freigabe für neues Agent-Binary);
+  nicht bedient, dem Nutzer gemeldet.

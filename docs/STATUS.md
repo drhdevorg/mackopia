@@ -62,8 +62,14 @@ Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Bas
   Log `/tmp/mackopia-p5-claude-package.log`. Erneut mit `MACKOPIA_TEST_PYTHON` auf OpenSSL-3-Python ausführen.
 - Xcode `build test` (`-parallel-testing-enabled NO`): **grün**, 4 Bundle-/Signaturtests, keine Compilerwarnung;
   `/tmp/mackopia-p5-claude-xcode.log`. Strikter Format-Lint und `git diff --check` sauber; neue Strings DE/EN.
-- **Nicht live geprüft:** Drop/Entf/Undo im Editor, Menüleisten-Navigation (laufende und neu gestartete App),
-  Fehleraktions-Buttons. Kein XCUITest vorhanden. Blockiert: Dienst startet wegen cdhash-Pin nicht (siehe Ledger).
+- **Live 2026-11-10 geprüft (temp-Plan, Debug-Build):** Finder-Drop mehrerer Ordner, ⌫, Schutz der letzten Quelle,
+  ⌘Z/⇧⌘Z mit Rückkehr an alte Position; Route per verteilter Mitteilung (laufende App, unbekannter Wert ignoriert)
+  und per Startargument (Kaltstart); „Aktivität anzeigen“ nach fehlgeschlagener Prüfung. Zwei Live-Fehler behoben:
+  Drop erreicht in gruppierter `Form` nur Section/Form (Test-Harness: List/ForEach-Drop feuert dort nie) und
+  Startroute wurde vom Fensteraufbau überschrieben (jetzt in `.task`). Menüleisten-Fenster selbst nicht bedienbar
+  (Computer Use findet den Agent nicht); Routen-Mechanik direkt ausgelöst. Kein XCUITest vorhanden.
+- Offene UX-Befunde: Aktivität zeigt nur Backup-Läufe, nicht die fehlgeschlagene Prüfung, auf die verwiesen wird;
+  laufende Prüfung erscheint in der Übersicht als „Backup wird vorbereitet“; Drop-Reihenfolge folgt Finder-Ziehordnung.
 - Live 2026-11-10 gefunden und behoben: „Hintergrunddienst aktivieren“ blieb bei `requiresApproval` und bei
   „enabled“ ohne startbaren launchd-Job stumm. Jetzt Freigabehinweis + Anmeldeobjekte bzw. explizite Reparatur
   (unregister/register, nur ohne Verbindung). 10 Registrierungstests grün; Hinweis live in der App gesehen.
@@ -73,7 +79,7 @@ Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Bas
 
 | Nachweis | Betroffene Funktion | Exakte nächste Aktion / Besitzer |
 |---|---|---|
-| **Ad-hoc-Agent durch BTM-Spawn-Constraint auf eine cdhash festgenagelt** (`launchctl print` → `LWCR reqs cdhash $in [...]`; AMFI `c[5]p[1]m[1]e[0]` = LWCR-Spawn-Constraint, Prozess selbst, kein Treffer). Team-signierte Agents bekommen `team-identifier`+`signing-identifier` | Jeder Neubau bricht den registrierten Dienst; **im Release jedes Update** bei kontolosem Vertrieb | Nutzer: Produktentscheidung (Vertrieb/Startmechanismus), siehe Audit. Entwicklung: sauberer Neuanfang (Hintergrund aus, Build löschen, Eintrag verschwinden lassen, neu registrieren) und danach nicht neu bauen |
+| **Ad-hoc-Agent durch BTM-Spawn-Constraint auf eine cdhash festgenagelt** (`launchctl print` → `LWCR reqs cdhash $in [...]`; AMFI `c[5]p[1]m[1]e[0]` = LWCR-Spawn-Constraint, Prozess selbst, kein Treffer). Team-signierte Agents bekommen `team-identifier`+`signing-identifier` | Jeder Neubau bricht den registrierten Dienst; **im Release jedes Update** bei kontolosem Vertrieb | Nutzer: Produktentscheidung (Vertrieb/Startmechanismus), siehe Audit. Entwicklung (belegt): nach jedem Build mit geändertem Agent-Binary Hintergrundfreigabe aus/ein → Freigabe pinnt den aktuellen Build; reine App-Änderungen ändern die Agent-cdhash nicht (Agent danach per `launchctl kickstart -k` neu starten, weil er die App-Signatur beim Start bindet) |
 | Native Verbindung wieder erreichbar, Agent-Fensteraufruf einmal Timeout | UI-/A11y-/Performance-Audit | Agent: App-Fenster weiter auditieren; MenuBarExtra separat öffnen |
 | Reales WebDAV/TLS/Anbieter | Provider-Kompatibilität | Nutzer stellt explizit entbehrlichen HTTPS-Testordner bereit; Agent prüft Create/Connect/Backup/Restore/Credential-Wechsel |
 | Reales S3/IAM/TLS/Token-Ablauf | Provider-Kompatibilität | Nutzer stellt explizit entbehrlichen Bucket/Präfix bereit; Agent prüft Create/Connect/Backup/Restore und Credential-Wechsel |

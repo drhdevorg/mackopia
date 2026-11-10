@@ -27,9 +27,6 @@ struct PlanEditorView: View {
                         Button("Quelle entfernen") { store.removeSources(ids, undoManager: undoManager) }
                             .disabled(!store.canRemoveSources(ids))
                     }
-                    .dropDestination(for: URL.self) { urls, _ in
-                        store.dropSources(urls, undoManager: undoManager)
-                    }
                     HStack {
                         Button("Quelle hinzufügen…") { store.addSource(undoManager: undoManager) }
                         Button("Entfernen", systemImage: "minus") { removeSelection() }
@@ -39,6 +36,9 @@ struct PlanEditorView: View {
                         Text("Ordner aus dem Finder hierher ziehen").font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                // macOS 27: inside a grouped Form, drops reach only the Section or Form, never a nested List or
+                // its rows (verified against Finder drags in a test harness, 2026-11-10).
+                .dropDestination(for: URL.self) { urls, _ in store.dropSources(urls, undoManager: undoManager) }
                 Section("Aufbewahrung") {
                     Picker("Aufbewahrung", selection: $store.retention) {
                         Text("Ausgewogen").tag(RetentionPreset.balanced)
