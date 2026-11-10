@@ -31,8 +31,12 @@ final class AgentConnection {
             registration = AgentServiceRegistration(identity: identity)
             observeRoutes(AppRoute.notificationName(for: identity))
         }
-        requestedRoute = AppRoute(arguments: CommandLine.arguments)
+        launchRoute = AppRoute(arguments: CommandLine.arguments)
     }
+
+    /// Section requested by the background service when it launched this app; read once by the first window.
+    private var launchRoute: AppRoute?
+    func consumeLaunchRoute() -> AppRoute? { defer { launchRoute = nil }; return launchRoute }
 
     func show(_ route: AppRoute) { requestedRoute = route }
 

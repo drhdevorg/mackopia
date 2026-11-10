@@ -101,8 +101,11 @@ struct FoundationView: View {
         .frame(minWidth: 800, minHeight: 520)
         .task {
             connection.start(); if restoreStore == nil { restoreStore = RestoreStore(connection: connection) }
+            // After the first layout pass, so restored window state cannot overwrite the requested section.
+            await Task.yield()
+            if let route = connection.consumeLaunchRoute() { savedRoute = route.rawValue }
         }
-        .onChange(of: connection.requestedRoute, initial: true) { _, route in
+        .onChange(of: connection.requestedRoute) { _, route in
             if let route { savedRoute = route.rawValue; connection.requestedRoute = nil }
         }
         .confirmationDialog("Konfiguration wiederherstellen?", isPresented: $connection.showRecovery) {
