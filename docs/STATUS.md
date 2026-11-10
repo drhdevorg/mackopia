@@ -74,9 +74,8 @@ Aktueller Arbeitsbranch: `claude/p5-restore-pagination` (Basis `main` @ `19a0a6d
   Backup → neues `noBackupToVerify` mit „Jetzt sichern“. Live: Ziel-Fall bestätigt (Temp-Root war gelöscht);
   „Noch kein Backup zum Prüfen“ nur durch Tests belegt. Vollsuite seriell 577 Tests, nur 6 TLS-Suites rot.
   Neubau-Ablauf: Freigabe aus/an, dann in der App „Hintergrunddienst aktivieren“, Keychain-Abfrage durch Nutzer.
-- Live 2026-11-10 gefunden und behoben: „Hintergrunddienst aktivieren“ blieb bei `requiresApproval` und bei
-  „enabled“ ohne startbaren launchd-Job stumm. Jetzt Freigabehinweis + Anmeldeobjekte bzw. explizite Reparatur
-  (unregister/register, nur ohne Verbindung). 10 Registrierungstests grün; Hinweis live in der App gesehen.
+- Live behoben: „Hintergrunddienst aktivieren“ zeigt bei `requiresApproval` den Freigabehinweis und repariert ein
+  „enabled“ ohne startbaren launchd-Job (unregister/register, nur ohne Verbindung); 10 Registrierungstests.
 - Vorherige Codex-Evidenz (Registrierung, Editor-Sheets, Instruments-Idle, Temp-Ziel, FDA-Block): Audit unten.
 - **Restore-Pagination (2026-11-10, `claude/p5-restore-pagination`):** `browse` trägt `entryOffset` (Vielfaches von 500)
   und optional `reveal`; XPC Version 8. Ordner bis 50.000 Einträge, Katalog bis 1.024 Quellen/10.000 Snapshots,
@@ -86,12 +85,11 @@ Aktueller Arbeitsbranch: `claude/p5-restore-pagination` (Basis `main` @ `19a0a6d
   501 Dateien (zweite Seite, Seite hinter dem Ende abgewiesen, Reveal).
   Prüfung: Vollsuite seriell 581 Tests/108 Suites, nur die 6 TLS-Suites rot (62× `startFailed`); Xcode `build test`
   grün (4 Bundle-/Signaturtests), keine Warnung, Lint sauber. Pager live im Fenster noch nicht gesehen.
-- Behoben: sporadische WebDAV-Prüfablehnung (lokal unter Last, CI 2× auf PR #9) lag am Test-Fixture, nicht am
-  Produkt. Der threadende Fixture-Server brach PROPFIND ab, wenn Kopia während der Auflistung eigene Log-Blobs
-  umbenannte (Stresstest: 1.438 von 3.000 Listings ohne Antwort). Jetzt überspringt er verschwundene Einträge,
-  schreibt PUT atomar und antwortet bei gleichzeitig gelöschtem Objekt mit 404. Eigentlicher CI-Befund (per
-  temporärer Diagnose): Kopia-PROPFIND brach mit `broken pipe` ab, weil das Fixture antwortete und schloss, bevor es den
-  Request-Body gelesen hatte; jetzt liest es jeden Body zuerst (`test_storage_fixture_concurrency`).
+- Behoben: sporadische WebDAV-Prüfablehnung (lokal unter Last, CI auf PR #9 reproduzierbar) lag am Test-Fixture.
+  Per temporärer CI-Diagnose: Kopias parallele PROPFIND-Listings scheiterten mit `write: broken pipe`, weil
+  `LoopbackHTTPServer` nur 5 wartende Verbindungen zuließ und macOS weitere zurücksetzt; jetzt 128. Zusätzlich liest das
+  Fixture jeden Request-Body vor der Antwort, überspringt während der Auflistung verschwundene Einträge, schreibt
+  PUT atomar und antwortet bei gleichzeitig gelöschtem Objekt mit 404. Regressionstests in `Scripts/tests`.
 
 ## Offene Live-Nachweise und Grenzen – kein globaler Entwicklungsstopp
 
