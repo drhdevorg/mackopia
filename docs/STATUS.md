@@ -1,21 +1,21 @@
 # Status & nächster Auftrag
 
-Stand: 2026-10-26. Einstieg: AGENTS.md, dieser Status, PROJEKT.md §14 und IMPLEMENTIERUNG.md.
+Stand: 2026-11-10. Einstieg: AGENTS.md, dieser Status, PROJEKT.md §14 und IMPLEMENTIERUNG.md.
 Historische Evidenz bleibt im [Archiv](history/README.md).
 
 ## Aktuelle Produktphase
 
-**Phase 5: Dienstregistrierung und Editorzustand live korrigiert; Temp-Einrichtung belegt.**
+**Phase 5: Bedienlücken (Quellen-Drop, Entf/Undo, Menüleisten-Navigation, Fehleraktionen) geschlossen; Live-Audit offen.**
 Phase 1–4 integriert; SFTP-/WebDAV-Reviewhistorie: [PR #6](https://github.com/drhdevorg/mackopia/pull/6),
 [PR #5](https://github.com/drhdevorg/mackopia/pull/5). Basis auf `main`: `ebe1aaf`.
-Aktueller Arbeitsbranch: `codex/p5-native-quality`, [Draft PR #7](https://github.com/drhdevorg/mackopia/pull/7).
-Produktionsbasis: `70309cb`; aktuelle Live-Fixes auf obigem Branch. Phase 5 bleibt offen.
+Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Basis `codex/p5-native-quality` @ `794de02`,
+[Draft PR #7](https://github.com/drhdevorg/mackopia/pull/7)). Phase 5 bleibt offen.
 
 ## In progress
 
 | Agent | Auftrag | Branch | Dateien/Module |
 |---|---|---|---|
-| Codex | Phase-5-Live-Audit; Registrierungsrückmeldung und Sidebar-Trunkierung | `codex/p5-native-quality` | App/, Agent/, BackupEngine, Tests, docs/ |
+| Claude | Phase 5 von Codex übernommen (Nutzerauftrag 2026-11-10): Quellen-Drag-and-drop, Entf/Undo, Menüleisten-Restore-Navigation, Fehleraktionen | `claude/p5-native-quality` (Basis `codex/p5-native-quality` @ `794de02`) | App/, Agent/, AgentProtocol, Tests, docs/ |
 
 ## Verbindliche Entscheidungen
 
@@ -41,44 +41,30 @@ Produktionsbasis: `70309cb`; aktuelle Live-Fixes auf obigem Branch. Phase 5 blei
 - Menüleiste: laufender Restore mit Abbruchaktion, bestimmter Backup-Fortschritt falls verfügbar,
   Warnsymbol auch für Health-Warnung/nicht verfügbaren Dienst. Kein neuer IPC-Vertrag.
 - ⌘. nutzt denselben Busy-Guard wie Toolbar; Fortschritt/Pausenmenü/Quelle entfernen mit A11y-Labels.
+- Plan-Editor: Quellen als Liste mit Auswahl; Finder-Drop (mehrere Ordner), Entf/Kontextmenü/Minus-Taste,
+  Undo/Redo für Hinzufügen und Entfernen (`SourceListEdit`, mind. eine Quelle, eindeutige Pfade, max. 1.024).
+  Einrichtung akzeptiert einen gezogenen Quellordner. Drop und Auswahl teilen `AgentConnection.localSources`.
+- `AppRoute` (AgentProtocol) ersetzt `showRestore`/`showActivity`. Menüleiste: „Wiederherstellen…“,
+  „Aktivität anzeigen“, „Wiederherstellung anzeigen“ bei laufendem Restore, „Details anzeigen“ bei Problemen;
+  Mitteilungs-Details öffnen die Übersicht. Mechanik und Sicherheitsgrenze: PROJEKT.md §17 (2026-11-10).
+- Fehleraktionen: Health `reviewDestination`/`enterPassword` → Speicherziele, `reviewActivity`/`reviewDiagnostics`
+  → Aktivität; Fenstermeldungen `.destination` → Speicherziele, Backup-/Prüf-/Wartungs-/Automatikfehler → Aktivität.
 - Detailbefunde und reproduzierbarer Live-Wiederaufnahmeweg:
   [Phase-5-Audit](history/Phase5-Qualitaetsaudit-2026-10-26.md).
 
 ## Prüfung dieses Codezustands
 
-- Xcode 27.1 (27A9275), Swift 6.4, arm64; finaler Produktionscode auf obigem Branch.
-- Package-Vollsuite: **557 Tests / 105 Suites bestanden**, echte temporäre lokale/S3-/WebDAV-/SFTP-
-  und Restore-Integration; 164,4 s. Log `/tmp/mackopia-p5-package.log`, keine Compilerwarnungen.
-- 4 neue Cache-/Dienststarttests bestanden: sichere Entfernung, Symlink-/Dateierhalt, unsicherer Root,
-  fehlender Root, wiederholter Dienststart. Bestehender echter Preview-/Restore-Lifecycle ebenfalls grün.
-- Xcode-Wiederaufnahme: **`build test` erfolgreich, 4 Bundle-/Signaturtests bestanden**, keine
-  Compilerwarnungen; unveränderter Produktionscode, Xcode 27.1 / arm64.
-  Log `/tmp/mackopia-p5-build-test-resume.log`, Ergebnis `Run-MacKopia-2026.10.26_15-02-06-+0100.xcresult`.
-- Zuvor `test-without-building` ebenfalls erfolgreich: 4 Tests, 0,207 s;
-  `/tmp/mackopia-p5-test-resume.log`. Beide Wiederaufnahmen außerhalb der Sandbox mit
-  `-parallel-testing-enabled NO`; Ursache des früheren Daemon-Verbindungs-Timeouts nicht isoliert.
-  Keine Scheme-/Signatur-/Entitlement-Änderung nötig. Historischer Exit 65 bleibt im früheren Log
-  `/tmp/mackopia-p5-xcode.log`; direkter damaliger Bundle-Lauf ebenfalls 4 Tests grün.
-- Das Xcode-Testziel enthält Bundle-/Signaturtests, noch keine automatisierten XCUITests.
-- Strikter Swift-Format-Lint und `git diff --check` sauber. App 246 / Agent 126 Katalogeinträge,
-  kein nichtleerer Schlüssel ohne Englisch; neue Restore-Zeile DE/EN.
-- Erster Compile-Versuch: fehlender BackupDomain-Import, vor obiger Vollprüfung korrigiert.
-- Live-UI wieder erreichbar; Nutzerfreigabe für Dienst/Temp-Workflow liegt vor. Registrierung nach
-  `.notFound`-Fix erfolgreich, XPC verbunden. Offline/⌘R/⌘,/Sidebar und ⌘N live geprüft.
-- Finale Package-Suite **559 Tests / 105 Suites grün**, seriell 289,8 s; TLS-1.3-Python explizit gesetzt.
-  `/tmp/mackopia-p5-live-package-serial.log`. Parallele Remote-Fehler bleiben im Audit dokumentiert.
-- Finaler Editor-/Registrierungsstand: **Xcode build test grün**, 4 Bundle-/Signaturtests,
-  `/tmp/mackopia-p5-editors-xcode-final.log`, keine Compilerwarnung. Format/Diff sauber.
-- Neue Regression: `.notFound` darf explizite Registrierung nach Signaturprüfung erreichen;
-  zunächst rot, anschließend grün; echte Systemfehler bleiben typisiert.
-- Neue Sheet-Hosts erhalten Entwürfe bei Verbindungsevents; Name/Ziel nach Quellenwahl live erhalten.
-  ⌘N ersetzt Standard-Neues-Fenster-Befehl. Deutsche Sidebar ohne bisherige Trunkierung.
-- Instruments-App-Idle 30 s: CPU Ø 0,211 %, Peak 4,975 %, Footprint 58,42–58,55 MiB, App-I/O 0 B/s.
-  Vorläufige Messung, kein Agent-/Last-/60-s-Nachweis; Trace und Grenzen im Audit.
-- Temp-Ziel live eingerichtet; ⌘B vom fehlenden FDA-Nachweis sicher blockiert, passende Fehleraktion.
-  Nutzer lehnt FDA-Freigabe ausdrücklich ab; noch kein Live-Backup/-Restore.
-- Vorheriger SFTP-Abschluss und einmalige WebDAV-Prüfablehnung samt unverändert erfolgreicher Diagnose:
-  [Phase-4-Evidenz](history/STATUS-Phase4-SFTP-Abschluss-2026-10-26.md). Im aktuellen Vollauf WebDAV grün.
+- Claude, 2026-11-10, Xcode 27.1 / Swift 6.4 / arm64, finaler Stand auf `claude/p5-native-quality`.
+- 9 neue Tests (`SourceListEditTests`, `AppRouteTests`) grün.
+- Package-Vollsuite seriell: **568 Tests / 107 Suites**; alles grün außer 6 KopiaServer-Netzwerksuites
+  (62 Issues, alle `FixtureError.startFailed`): `native_tls_fixture.py` braucht TLS 1.3, auf diesem Rechner gibt es
+  nur LibreSSL-Python (`/usr/bin`, Xcode). Codex' gebündeltes Python fehlt hier. Lokal/S3/WebDAV/SFTP/Restore-Integration grün.
+  Log `/tmp/mackopia-p5-claude-package.log`. Erneut mit `MACKOPIA_TEST_PYTHON` auf OpenSSL-3-Python ausführen.
+- Xcode `build test` (`-parallel-testing-enabled NO`): **grün**, 4 Bundle-/Signaturtests, keine Compilerwarnung;
+  `/tmp/mackopia-p5-claude-xcode.log`. Strikter Format-Lint und `git diff --check` sauber; neue Strings DE/EN.
+- **Nicht live geprüft:** Drop/Entf/Undo im Editor, Menüleisten-Navigation (laufende und neu gestartete App),
+  Fehleraktions-Buttons. Kein XCUITest vorhanden.
+- Vorherige Codex-Evidenz (Registrierung, Editor-Sheets, Instruments-Idle, Temp-Ziel, FDA-Block): Audit unten.
 
 ## Offene Live-Nachweise und Grenzen – kein globaler Entwicklungsstopp
 
@@ -111,8 +97,8 @@ Temp-Root: `/private/tmp/mackopia-live-audit-xp05r3_k`. Fenster/Menüleiste/Shor
 Fehleraktionen/Remote-Assistenten prüfen; DE/EN, Light/Dark/Kontrast, minimales Fenster, Tastatur/VoiceOver
 mit Screenshots erfassen und Instruments Idle-CPU/Speicher/I/O/Updatefrequenz messen.
 FDA-Freigabe abgelehnt; geschützten Live-Lauf erst nach einer neuen ausdrücklichen Freigabe fortsetzen.
-Bekannte unabhängige Bedienlücken: Quellen-Drag-and-drop, Entf/Undo, Menüleisten-Restore-Navigation und
-Fehleraktionen prüfen/integrieren; keine spekulativen Frameworks/Entitlements. Registrierung/FDA/Keychain
+Zuerst die neuen Wege live prüfen: Finder-Drop/Entf/⌘Z im Plan-Editor, Menüleiste → Wiederherstellen/Aktivität
+bei laufender und geschlossener App, Fehleraktionen. Danach Quellen-/Snapshot-Pagination; keine spekulativen Frameworks/Entitlements. Registrierung/FDA/Keychain
 nur mit bewussten nötigen Systemfreigaben; reale Provider/Hardware bleiben separat.
 Fertig: belegter integrierter Audit, behobene Befunde mit Tests, relevante Prüfungen und kompakte Übergabe.
 Name/Bundle-Präfix MacKopia / com.example.MacKopia; Lizenzmodell offen.

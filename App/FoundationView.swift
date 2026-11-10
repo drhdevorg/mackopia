@@ -1,25 +1,25 @@
+import AgentProtocol
 import BackupDomain
 import SwiftUI
 
 struct FoundationView: View {
-    enum Route: String, Hashable { case overview, plans, destinations, activity, restore }
     @Environment(AgentConnection.self) private var connection
     @State private var credentialRepository: Repository?
     @State private var restoreStore: RestoreStore?
-    @SceneStorage("navigation") private var savedRoute = Route.overview.rawValue
-    private var selection: Binding<Route?> {
-        Binding(get: { Route(rawValue: savedRoute) }, set: { savedRoute = ($0 ?? .overview).rawValue })
+    @SceneStorage("navigation") private var savedRoute = AppRoute.overview.rawValue
+    private var selection: Binding<AppRoute?> {
+        Binding(get: { AppRoute(rawValue: savedRoute) }, set: { savedRoute = ($0 ?? .overview).rawValue })
     }
 
     var body: some View {
         @Bindable var connection = connection
         NavigationSplitView {
             List(selection: selection) {
-                Label("Übersicht", systemImage: "house").tag(Route.overview)
-                Label("Backup-Pläne", systemImage: "list.bullet").tag(Route.plans)
-                Label("Speicherziele", systemImage: "externaldrive").tag(Route.destinations)
-                Label("Wiederherstellen", systemImage: "arrow.counterclockwise").tag(Route.restore)
-                Label("Aktivität", systemImage: "clock").tag(Route.activity)
+                Label("Übersicht", systemImage: "house").tag(AppRoute.overview)
+                Label("Backup-Pläne", systemImage: "list.bullet").tag(AppRoute.plans)
+                Label("Speicherziele", systemImage: "externaldrive").tag(AppRoute.destinations)
+                Label("Wiederherstellen", systemImage: "arrow.counterclockwise").tag(AppRoute.restore)
+                Label("Aktivität", systemImage: "clock").tag(AppRoute.activity)
             }
             .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         } detail: {
@@ -54,6 +54,9 @@ struct FoundationView: View {
                                     }
                                     if connection.state?.issue == .permissions {
                                         Button("Festplattenvollzugriff öffnen…") { connection.openPrivacySettings() }
+                                    }
+                                    if let route = AppRoute.route(for: connection.state?.issue) {
+                                        Button(route.issueActionTitle) { savedRoute = route.rawValue }
                                     }
                                 }
                             }
@@ -99,11 +102,8 @@ struct FoundationView: View {
         .task {
             connection.start(); if restoreStore == nil { restoreStore = RestoreStore(connection: connection) }
         }
-        .onChange(of: connection.showRestore) { _, value in
-            if value { savedRoute = Route.restore.rawValue; connection.showRestore = false }
-        }
-        .onChange(of: connection.showActivity) { _, requested in
-            if requested { savedRoute = Route.activity.rawValue; connection.showActivity = false }
+        .onChange(of: connection.requestedRoute, initial: true) { _, route in
+            if let route { savedRoute = route.rawValue; connection.requestedRoute = nil }
         }
         .confirmationDialog("Konfiguration wiederherstellen?", isPresented: $connection.showRecovery) {
             Button("Wiederherstellen") { connection.send(.recoverConfiguration) }
@@ -123,11 +123,11 @@ struct FoundationView: View {
     }
 
     @ViewBuilder private var content: some View {
-        if savedRoute == Route.restore.rawValue {
+        if savedRoute == AppRoute.restore.rawValue {
             if let restoreStore { RestoreView().environment(restoreStore) }
-        } else if savedRoute == Route.activity.rawValue {
+        } else if savedRoute == AppRoute.activity.rawValue {
             ActivityView()
-        } else if savedRoute == Route.destinations.rawValue {
+        } else if savedRoute == AppRoute.destinations.rawValue {
             List(connection.state?.configuration?.repositories ?? []) { repository in
                 LabeledContent(repository.name) {
                     if case .filesystem(let path, _) = repository.kind {

@@ -1,6 +1,6 @@
 # Implementierungsatlas
 
-Stand: 2026-10-26. Kompakter Codeatlas, keine Sessionchronik.
+Stand: 2026-11-10. Kompakter Codeatlas, keine Sessionchronik.
 Normative Architektur: PROJEKT.md; aktiver Auftrag und Nachweise: STATUS.md.
 Alte Phasen-/Batch-Nummern in Kommentaren und Protokollen sind historische Referenzen.
 
@@ -33,7 +33,7 @@ Alte Phasen-/Batch-Nummern in Kommentaren und Protokollen sind historische Refer
 | Vertrauen | Health, Plausibilität/Pinning, SnapshotVerificationEngine, AutomaticSnapshotVerification, AutomaticTestRestore | PlanRuntimeState/PlanRuntimeView zeigen Health/Folgeaktionen und dauerhafte Prüfnachweise; AgentNotifications |
 | Wartung | MaintenanceCoordinator, FilesystemMaintenanceInspection, KopiaMaintenanceReader/Runner | Frische Owner-/Terminprüfung, automatische serielle Nacharbeit und dauerhafte Ziel-Evidenz verdrahtet |
 | XPC | AgentSigningIdentity, AgentServiceClient/Server, AgentWirePacket/Request, AgentServiceRegistration; Version 7, Grenzen/Korrelation, asynchrone Antworten, Revisionsbeobachtung/Reconnect | Echter registrierter positiver/negativer Peer-Test; weitere Requests in Folgephasen |
-| UI | App/AgentConnection, LocalSetupStore/View, PlanEditorStore/View, FoundationView/Settings, PreviewData; Agent/AgentRuntimeStore und echte Menüleiste; DE/EN | RestoreStore/View/Sheet, SnapshotMetadataSheet, RestorePreviewData und RecoveryKit DE/EN verdrahtet; Live-Design-/A11y-/Druckabnahme offen |
+| UI | App/AgentConnection, LocalSetupStore/View, PlanEditorStore/View, FoundationView/Settings, PreviewData; Agent/AgentRuntimeStore und echte Menüleiste; DE/EN | RestoreStore/View/Sheet, SnapshotMetadataSheet, RestorePreviewData und RecoveryKit DE/EN verdrahtet; Quellen per Drag-and-drop, Entf/Kontextmenü und Undo (`SourceListEdit`); Navigation über `AppRoute` aus Befehlen, Health-/Fehleraktionen und Menüleiste. Live-Design-/A11y-/Druckabnahme offen |
 | Restore | LocalServiceRestore/Utilities, RestoreBrowser/Destination, RestoreState/SearchMatch | Gemeinsame Gate-/Runtime-Steuerung, Ziel-/Ausgabe-UUIDs, Snapshot-Abstammung, Abbruch/Fortschritt und Vorschau-Cleanup; kein Originalquellenzugriff |
 | System | UUID-Monitore, DiskArbitration-Schutz, Network/Energie/Wake, SleepAssertion | Live-Berechtigungsnachweise und gebündelte UI-/A11y-/Performance-Abnahme |
 

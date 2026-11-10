@@ -1,3 +1,4 @@
+import AgentProtocol
 import AppKit
 import BackupDomain
 import BackupEngine
@@ -26,7 +27,7 @@ final class AgentRuntimeStore {
     func observe(_ service: LocalBackupService) {
         self.service = service
         notifications.retry = { [weak self] in self?.run($0) }
-        notifications.openDetails = { [weak self] in self?.openApp() }
+        notifications.openDetails = { [weak self] in self?.openApp(.overview) }
         observation = Task { [weak self] in
             var revision: UUID?
             do {
@@ -50,9 +51,23 @@ final class AgentRuntimeStore {
         guard let id = state?.restore?.operationID else { return }
         Task { try? await service?.cancelRestore(id) }
     }
-    func openApp() {
+    /// A newly launched app reads the route from its arguments; a running one gets the same fixed route as a
+    /// payload-free distributed notification, because launch arguments are ignored on reactivation.
+    func openApp(_ route: AppRoute? = nil) {
         let app = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
-        NSWorkspace.shared.openApplication(at: app, configuration: NSWorkspace.OpenConfiguration())
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.arguments = route?.launchArguments ?? []
+        let name = Bundle.main.bundleIdentifier.flatMap { id -> Notification.Name? in
+            guard id.hasSuffix(".Agent"), let identity = try? AgentServiceIdentity(appBundleID: String(id.dropLast(6)))
+            else { return nil }
+            return AppRoute.notificationName(for: identity)
+        }
+        let routeValue = route?.rawValue
+        NSWorkspace.shared.openApplication(at: app, configuration: configuration) { _, error in
+            guard error == nil, let name, let routeValue else { return }
+            DistributedNotificationCenter.default().postNotificationName(
+                name, object: routeValue, userInfo: nil, deliverImmediately: true)
+        }
     }
 }
