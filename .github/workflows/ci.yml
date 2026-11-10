@@ -61,6 +61,8 @@ jobs:
       - name: Formatting
         run: swift format lint --recursive --strict App Agent MacKopiaKit Tests
       - name: Package tests
+        # A starved Swift concurrency pool hangs silently; fail fast instead of the 6-hour default.
+        timeout-minutes: 30
         env:
           MACKOPIA_REQUIRE_KOPIA_INTEGRATION: "1"
         run: swift test --package-path MacKopiaKit
