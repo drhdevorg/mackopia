@@ -230,5 +230,7 @@ Builds liefen mit `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
   `onDrop` an der List schon. MacKopia nutzt jetzt `dropDestination` an der Quellen-Section.
 - Kaltstart mit `-MacKopiaRoute destinations` landete zunächst auf Übersicht; Anwendung in `.task` behebt es.
 - Prüfen ohne erreichbares Altziel zeigte die Fenstermeldung mit „Aktivität anzeigen“; Ziel korrekt, Liste ohne Prüfeintrag.
+  Behoben 2026-11-10: Aktivität führt letzte Prüfung/Testwiederherstellung/Wartung je Plan; laufende Prüfung
+  heißt „Integritätsprüfung läuft“ statt „Backup wird vorbereitet“ (`ActiveWork`).
 - Ein SecurityAgent-Dialog erschien während der Prüfung (vermutlich Schlüsselbund-Freigabe für neues Agent-Binary);
   nicht bedient, dem Nutzer gemeldet.

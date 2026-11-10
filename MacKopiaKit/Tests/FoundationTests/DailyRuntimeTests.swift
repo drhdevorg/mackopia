@@ -12,6 +12,7 @@ struct DailyRuntimeTests {
         try await runtime.start()
         try await runtime.requestCheck(fixture.plan.id)
         try await waitForRuntime { await probe.started }
+        #expect(await runtime.currentWork()?.work == .verification)
         try await runtime.enqueue(planID: fixture.plan.id)
         #expect(await fixture.history.started.isEmpty)
         try await runtime.stop(planID: fixture.plan.id)
@@ -32,6 +33,7 @@ struct DailyRuntimeTests {
         try await runtime.enqueue(planID: fixture.plan.id)
         try await waitForRuntime { await probe.started }
         #expect(await fixture.history.finished.count == 1)
+        #expect(await runtime.currentWork()?.work == .finishing)
         try await runtime.enqueue(planID: fixture.plan.id)
         #expect(await fixture.history.started.count == 1)
         try await runtime.pause(planID: fixture.plan.id)
