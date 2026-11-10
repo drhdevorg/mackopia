@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 import secrets
 import shutil
+import stat
 import subprocess
 import tempfile
 import threading
@@ -98,7 +99,10 @@ def storage_server(repository, username, password, access_key, session_token, se
                         self.send_error(413)
                         return
                     target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_bytes(self.rfile.read(length))
+                    # Write beside the target and rename, so a concurrent GET never reads a partial object.
+                    partial = target.with_name(target.name + ".partial-" + secrets.token_hex(8))
+                    partial.write_bytes(self.rfile.read(length))
+                    partial.replace(target)
                 elif self.command == "MKCOL":
                     target.mkdir(parents=True, exist_ok=True)
                 elif self.command == "MOVE":
@@ -126,13 +130,22 @@ def storage_server(repository, username, password, access_key, session_token, se
                     entries += list(target.iterdir())
                 items = []
                 for entry in entries:
+                    # The server is threaded: an entry listed here can be renamed or deleted by a concurrent
+                    # MOVE/DELETE (Kopia uploads its own log blobs during every command). Like a real server,
+                    # omit it instead of dropping the whole listing.
+                    try:
+                        info = entry.stat()
+                    except FileNotFoundError:
+                        continue
+                    if ".partial-" in entry.name:
+                        continue
                     name = "/" + entry.relative_to(repository.resolve()).as_posix()
-                    resource = "<d:collection/>" if entry.is_dir() else ""
+                    resource = "<d:collection/>" if stat.S_ISDIR(info.st_mode) else ""
                     items.append(
                         "<d:response><d:href>" + escape(quote(name)) + "</d:href><d:propstat><d:prop>"
                         + "<d:resourcetype>" + resource + "</d:resourcetype>"
-                        + "<d:getcontentlength>" + str(entry.stat().st_size) + "</d:getcontentlength>"
-                        + "<d:getlastmodified>" + formatdate(entry.stat().st_mtime, usegmt=True) + "</d:getlastmodified>"
+                        + "<d:getcontentlength>" + str(info.st_size) + "</d:getcontentlength>"
+                        + "<d:getlastmodified>" + formatdate(info.st_mtime, usegmt=True) + "</d:getlastmodified>"
                         + "</d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>"
                     )
                 content = ('<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">' + "".join(items)
@@ -143,15 +156,26 @@ def storage_server(repository, username, password, access_key, session_token, se
                     prefix = parse_qs(urlsplit(self.path).query).get("prefix", [""])[0]
                     if not entry.name[:-2].startswith(prefix):
                         continue
+                    try:
+                        info = entry.stat()
+                    except FileNotFoundError:
+                        continue
                     items.append("<Contents><Key>" + escape(entry.name[:-2]) + "</Key>"
-                                 + "<LastModified>" + datetime.fromtimestamp(entry.stat().st_mtime, timezone.utc).isoformat().replace("+00:00", "Z") + "</LastModified>"
-                                 + '<ETag>"fixture"</ETag><Size>' + str(entry.stat().st_size)
+                                 + "<LastModified>" + datetime.fromtimestamp(info.st_mtime, timezone.utc).isoformat().replace("+00:00", "Z") + "</LastModified>"
+                                 + '<ETag>"fixture"</ETag><Size>' + str(info.st_size)
                                  + "</Size><StorageClass>STANDARD</StorageClass></Contents>")
                 content = ('<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
                            + "<Name>bucket</Name><IsTruncated>false</IsTruncated>"
                            + "".join(items) + "</ListBucketResult>").encode()
             else:
-                content = target.read_bytes() if target.is_file() else b""
+                try:
+                    content = target.read_bytes() if target.is_file() else b""
+                except FileNotFoundError:
+                    # Deleted or renamed by a concurrent request after the existence check.
+                    self.send_response(404)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
 
             total = len(content)
             start, end = 0, total - 1
@@ -168,7 +192,10 @@ def storage_server(repository, username, password, access_key, session_token, se
             self.send_header("Content-Length", str(len(content)))
             self.send_header("Content-Type", "application/xml" if self.command == "PROPFIND" else "application/octet-stream")
             self.send_header("ETag", '"fixture"')
-            self.send_header("Last-Modified", formatdate(target.stat().st_mtime, usegmt=True))
+            try:
+                self.send_header("Last-Modified", formatdate(target.stat().st_mtime, usegmt=True))
+            except FileNotFoundError:
+                pass
             self.end_headers()
             if not head:
                 try:

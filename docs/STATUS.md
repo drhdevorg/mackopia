@@ -86,6 +86,10 @@ Aktueller Arbeitsbranch: `claude/p5-restore-pagination` (Basis `main` @ `19a0a6d
   501 Dateien (zweite Seite, Seite hinter dem Ende abgewiesen, Reveal).
   Prüfung: Vollsuite seriell 581 Tests/108 Suites, nur die 6 TLS-Suites rot (62× `startFailed`); Xcode `build test`
   grün (4 Bundle-/Signaturtests), keine Warnung, Lint sauber. Pager live im Fenster noch nicht gesehen.
+- Behoben: sporadische WebDAV-Prüfablehnung (lokal unter Last, CI 2× auf PR #9) lag am Test-Fixture, nicht am
+  Produkt. Der threadende Fixture-Server brach PROPFIND ab, wenn Kopia während der Auflistung eigene Log-Blobs
+  umbenannte (Stresstest: 1.438 von 3.000 Listings ohne Antwort). Jetzt überspringt er verschwundene Einträge,
+  schreibt PUT atomar und antwortet bei gleichzeitig gelöschtem Objekt mit 404 (`test_storage_fixture_concurrency`).
 
 ## Offene Live-Nachweise und Grenzen – kein globaler Entwicklungsstopp
 
@@ -106,7 +110,6 @@ Aktueller Arbeitsbranch: `claude/p5-restore-pagination` (Basis `main` @ `19a0a6d
 | Sehr große Kataloge/Verzeichnisse | Restore-Browser | >1.024 Quellen/10.000 Snapshots/8 MiB bzw. >50.000 Einträge je Ordner blockieren; Seiten zu 500 nur automatisiert und mit echtem Kopia (501 Dateien) geprüft, Live-UI offen |
 | Gatekeeper/Updates, Checkpoint 45 statt 15 Minuten | Release | Phase 6: Installationsartefakt prüfen; Checkpoint-Produktentscheidung treffen |
 | Reales SFTP/SSH/Host-Key | Provider-Kompatibilität | Nutzer stellt entbehrlichen Testordner und öffentlichen Host-Key über vertrauenswürdigen Kanal bereit; Agent prüft Create/Connect/Backup/Restore/Schlüsselwechsel |
-| Einmalige WebDAV-Verifikationsablehnung im Vollauf | Prüfevidenz unter paralleler Last | Bei erneutem Auftreten sanitisierte Prozess-/Prüfzähler und Fixture-Zustand erfassen; erster Fehler und isolierte erfolgreiche Diagnose oben |
 
 
 ## Nächster vollständiger Coding-Auftrag
