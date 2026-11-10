@@ -5,23 +5,21 @@ Historische Evidenz bleibt im [Archiv](history/README.md).
 
 ## Aktuelle Produktphase
 
-**Phase 5: Bedienlücken (Quellen-Drop, Entf/Undo, Menüleisten-Navigation, Fehleraktionen) geschlossen; Live-Audit offen.**
-Phase 1–4 integriert; SFTP-/WebDAV-Reviewhistorie: [PR #6](https://github.com/drhdevorg/mackopia/pull/6),
-[PR #5](https://github.com/drhdevorg/mackopia/pull/5). Basis auf `main`: `ebe1aaf`.
-Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Basis `codex/p5-native-quality` @ `794de02`,
-[Draft PR #7](https://github.com/drhdevorg/mackopia/pull/7)). Phase 5 bleibt offen.
+**Phase 5: Bedienlücken geschlossen, Restore-Pagination umgesetzt; Live-Audit offen.**
+Phase 1–4 integriert; Phase-5-Bedienlücken über [PR #8](https://github.com/drhdevorg/mackopia/pull/8) auf `main` (`19a0a6d`).
+Aktueller Arbeitsbranch: `claude/p5-restore-pagination` (Basis `main` @ `19a0a6d`). Phase 5 bleibt offen.
 
 ## In progress
 
 | Agent | Auftrag | Branch | Dateien/Module |
 |---|---|---|---|
-| Claude | Phase 5 von Codex übernommen (Nutzerauftrag 2026-11-10): Quellen-Drag-and-drop, Entf/Undo, Menüleisten-Restore-Navigation, Fehleraktionen | `claude/p5-native-quality` (Basis `codex/p5-native-quality` @ `794de02`) | App/, Agent/, AgentProtocol, Tests, docs/ |
+| Claude | Restore-Browser-Pagination (Verzeichnisse seitenweise, größerer Katalog, Suchtreffer auf ihrer Seite) | `claude/p5-restore-pagination` | BackupEngine/RestoreBrowser, LocalServiceRestore, AgentProtocol, KopiaServerClient, App/Restore*, docs/ |
 
 ## Verbindliche Entscheidungen
 
 - macOS 27.x, natives arm64; Xcode 27.1 (27A9275), Swift 6.4 / Sprachmodus 6, SDK 27.
 - Ad-hoc-Vertrieb/Hardened Runtime; unveränderte Entitlements/Dependencies/Buildphasen und Kopia 0.23.1.
-- Agent besitzt Runtime, Schlüsselbund und Kopia; App nur über authentifiziertes XPC, Version 7.
+- Agent besitzt Runtime, Schlüsselbund und Kopia; App nur über authentifiziertes XPC, Version 8.
 - S3/WebDAV/SFTP-End-to-end: Create/Connect, geprüfter Credential-Ersatz, Backup/Verify/Restore.
 - WebDAV/SFTP-Runtime-JSON nur im RAM: frische anonyme Pipe, geschütztes Symlink-Verzeichnis, gemeinsame Sperre.
 - SFTP: bewusste öffentliche Host-Key-Freigabe, SHA256-Pin, geschützte known_hosts; Schlüssel im Keychain.
@@ -54,14 +52,9 @@ Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Bas
 
 ## Prüfung dieses Codezustands
 
-- Claude, 2026-11-10, Xcode 27.1 / Swift 6.4 / arm64, finaler Stand auf `claude/p5-native-quality`.
-- 9 neue Tests (`SourceListEditTests`, `AppRouteTests`) grün.
-- Package-Vollsuite seriell: **568 Tests / 107 Suites**; alles grün außer 6 KopiaServer-Netzwerksuites
-  (62 Issues, alle `FixtureError.startFailed`): `native_tls_fixture.py` braucht TLS 1.3, auf diesem Rechner gibt es
-  nur LibreSSL-Python (`/usr/bin`, Xcode). Codex' gebündeltes Python fehlt hier. Lokal/S3/WebDAV/SFTP/Restore-Integration grün.
-  Log `/tmp/mackopia-p5-claude-package.log`. Erneut mit `MACKOPIA_TEST_PYTHON` auf OpenSSL-3-Python ausführen.
-- Xcode `build test` (`-parallel-testing-enabled NO`): **grün**, 4 Bundle-/Signaturtests, keine Compilerwarnung;
-  `/tmp/mackopia-p5-claude-xcode.log`. Strikter Format-Lint und `git diff --check` sauber; neue Strings DE/EN.
+- Lokal (Xcode 27.1 / Swift 6.4 / arm64) bleiben 6 KopiaServer-Netzwerksuites rot (`FixtureError.startFailed`):
+  `native_tls_fixture.py` braucht TLS 1.3, hier gibt es nur LibreSSL-Python; mit `MACKOPIA_TEST_PYTHON` auf
+  OpenSSL-3-Python ausführen. GitHub-CI (`xcode-27`) ist auf `main` grün; Watchdog/30-Minuten-Timeout gegen Hänger.
 - **Live 2026-11-10 geprüft (temp-Plan, Debug-Build):** Finder-Drop mehrerer Ordner, ⌫, Schutz der letzten Quelle,
   ⌘Z/⇧⌘Z mit Rückkehr an alte Position; Route per verteilter Mitteilung (laufende App, unbekannter Wert ignoriert)
   und per Startargument (Kaltstart); „Aktivität anzeigen“ nach fehlgeschlagener Prüfung. Zwei Live-Fehler behoben:
@@ -85,6 +78,14 @@ Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Bas
   „enabled“ ohne startbaren launchd-Job stumm. Jetzt Freigabehinweis + Anmeldeobjekte bzw. explizite Reparatur
   (unregister/register, nur ohne Verbindung). 10 Registrierungstests grün; Hinweis live in der App gesehen.
 - Vorherige Codex-Evidenz (Registrierung, Editor-Sheets, Instruments-Idle, Temp-Ziel, FDA-Block): Audit unten.
+- **Restore-Pagination (2026-11-10, `claude/p5-restore-pagination`):** `browse` trägt `entryOffset` (Vielfaches von 500)
+  und optional `reveal`; XPC Version 8. Ordner bis 50.000 Einträge, Katalog bis 1.024 Quellen/10.000 Snapshots,
+  Kopia-Verzeichnis-/Manifestantworten bis 32 MiB. Ein Browse liest die Quellen nur noch einmal (Katalog an `resolve`).
+  `RestorePager` (Vor/Zurück, „1–500 von 12.345“, A11y-Labels) erscheint nur bei mehr als einer Seite; Dateitreffer
+  öffnen ihre Seite mit Auswahl. Tests: Browser-Paging/-Grenzen/-Reveal, Request-Validierung, echter Kopia-Ordner mit
+  501 Dateien (zweite Seite, Seite hinter dem Ende abgewiesen, Reveal).
+  Prüfung: Vollsuite seriell 581 Tests/108 Suites, nur die 6 TLS-Suites rot (62× `startFailed`); Xcode `build test`
+  grün (4 Bundle-/Signaturtests), keine Warnung, Lint sauber. Pager live im Fenster noch nicht gesehen.
 
 ## Offene Live-Nachweise und Grenzen – kein globaler Entwicklungsstopp
 
@@ -102,7 +103,7 @@ Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Bas
 | Native Mitteilungen/Aktionen | Zustellung | Nutzer aktiviert am registrierten Dienst; Agent prüft Zustellung/Retry/Details mit Temp-Plan |
 | Restore-/Remote-UI-Durchgang und Kit/PDF | Fenster, Quick Look, Druck | Agent + Nutzer: lokales Fixture/Temp-Backup, Fehler/Abbruch/Credential-Sheet und PDF-Layout prüfen |
 | DE/EN, Light/Dark/Kontrast, Tastatur/VoiceOver | UI-/Releasequalität | Phase 5/6: Screenshots/minimales Fenster und A11y-Audit; bisher Code/Previews/Katalog/Build |
-| Große Kataloge/Verzeichnisse | Restore-Browser | >128 Quellen/1.000 Snapshots/8 MiB bzw. >2.000 Einträge blockieren; Pagination vor größerer Freigabe |
+| Sehr große Kataloge/Verzeichnisse | Restore-Browser | >1.024 Quellen/10.000 Snapshots/8 MiB bzw. >50.000 Einträge je Ordner blockieren; Seiten zu 500 nur automatisiert und mit echtem Kopia (501 Dateien) geprüft, Live-UI offen |
 | Gatekeeper/Updates, Checkpoint 45 statt 15 Minuten | Release | Phase 6: Installationsartefakt prüfen; Checkpoint-Produktentscheidung treffen |
 | Reales SFTP/SSH/Host-Key | Provider-Kompatibilität | Nutzer stellt entbehrlichen Testordner und öffentlichen Host-Key über vertrauenswürdigen Kanal bereit; Agent prüft Create/Connect/Backup/Restore/Schlüsselwechsel |
 | Einmalige WebDAV-Verifikationsablehnung im Vollauf | Prüfevidenz unter paralleler Last | Bei erneutem Auftreten sanitisierte Prozess-/Prüfzähler und Fixture-Zustand erfassen; erster Fehler und isolierte erfolgreiche Diagnose oben |

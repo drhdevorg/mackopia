@@ -42,8 +42,10 @@ final class AgentAppDelegate: NSObject, NSApplicationDelegate {
                         try await service.previewRestore(
                             repositoryID: repo, snapshotID: snapshot, components: components)
                     case .clearRestorePreview: try await service.clearRestorePreview()
-                    case .browse(let repo, let snapshot, let components):
-                        try await service.browse(repositoryID: repo, snapshotID: snapshot, components: components)
+                    case .browse(let repo, let snapshot, let components, let offset, let reveal):
+                        try await service.browse(
+                            repositoryID: repo, snapshotID: snapshot, components: components, entryOffset: offset,
+                            reveal: reveal)
                     case .restore(let repo, let snapshot, let components, let destination):
                         try await service.restore(
                             repositoryID: repo, snapshotID: snapshot, components: components, destination: destination)

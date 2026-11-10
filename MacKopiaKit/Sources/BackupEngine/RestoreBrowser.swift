@@ -6,10 +6,12 @@ import KopiaServer
 /// No caller-supplied object ID or original source path becomes a local write target.
 struct RestoreBrowser: Sendable {
     let service: any KopiaRestoreServing
+    static let maximumSources = 1024
+    static let maximumSnapshots = 10_000
 
     func snapshots() async throws -> [RestoreSnapshot] {
         let sources = try await service.sources().sources ?? []
-        guard sources.count <= 128 else { throw LocalServiceIssue.invalidRequest }
+        guard sources.count <= Self.maximumSources else { throw LocalServiceIssue.invalidRequest }
         var result: [RestoreSnapshot] = []
         for source in sources {
             try Task.checkCancellation()
@@ -25,7 +27,7 @@ struct RestoreBrowser: Sendable {
                         bytes: item.summary?.size ?? 0, files: item.summary?.files ?? 0,
                         retention: item.retention ?? [], pins: item.pins ?? [], description: item.description ?? "",
                         isIncomplete: !(item.incomplete ?? "").isEmpty || (item.summary?.numFailed ?? 0) > 0))
-                guard result.count <= 1000 else { throw LocalServiceIssue.invalidRequest }
+                guard result.count <= Self.maximumSnapshots else { throw LocalServiceIssue.invalidRequest }
             }
         }
         guard try JSONEncoder().encode(result).count <= 8 * 1024 * 1024 else {
@@ -34,11 +36,14 @@ struct RestoreBrowser: Sendable {
         return result.sorted { $0.date > $1.date }
     }
 
+    /// `catalog` reuses a listing the caller already read, so one browse request reads the sources once.
     func resolve(
-        snapshotID: String, components: [String]
+        snapshotID: String, components: [String], catalog: [RestoreSnapshot]? = nil
     ) async throws -> (id: String, directory: Bool, selector: String) {
         try RestoreSelection.validate(snapshotID: snapshotID, components: components)
-        guard let selected = try await snapshots().first(where: { $0.id == snapshotID }) else {
+        let listing: [RestoreSnapshot]
+        if let catalog { listing = catalog } else { listing = try await snapshots() }
+        guard let selected = listing.first(where: { $0.id == snapshotID }) else {
             throw LocalServiceIssue.invalidRequest
         }
         let source = try KopiaSnapshotSource(userName: selected.user, host: selected.host, path: selected.sourcePath)
@@ -64,11 +69,14 @@ struct RestoreBrowser: Sendable {
         return current
     }
 
-    func entries(snapshotID: String, components: [String]) async throws -> [RestoreEntry] {
-        let object = try await resolve(snapshotID: snapshotID, components: components)
+    /// The whole directory in display order; callers page it with `page(_:offset:)`.
+    func entries(
+        snapshotID: String, components: [String], catalog: [RestoreSnapshot]? = nil
+    ) async throws -> [RestoreEntry] {
+        let object = try await resolve(snapshotID: snapshotID, components: components, catalog: catalog)
         guard object.directory else { throw LocalServiceIssue.invalidRequest }
         let entries = try await service.directory(id: object.id).entries ?? []
-        guard entries.count <= 2000 else { throw LocalServiceIssue.invalidRequest }
+        guard entries.count <= RestoreState.maximumDirectoryEntries else { throw LocalServiceIssue.invalidRequest }
         return try entries.compactMap { entry in
             guard let name = entry.name, RestoreSelection.validComponent(name) else {
                 throw LocalServiceIssue.invalidRequest
@@ -77,6 +85,20 @@ struct RestoreBrowser: Sendable {
             return RestoreEntry(name: name, isDirectory: entry.type == "d", bytes: entry.size ?? 0)
         }.sorted { ($0.isDirectory ? 0 : 1, $0.name) < ($1.isDirectory ? 0 : 1, $1.name) }
     }
+    /// A page that starts past the end is rejected rather than shown empty; an empty directory has page 0 only.
+    static func page(_ entries: [RestoreEntry], offset: Int) throws -> ArraySlice<RestoreEntry> {
+        guard RestoreSelection.validEntryOffset(offset), offset == 0 || offset < entries.count else {
+            throw LocalServiceIssue.invalidRequest
+        }
+        return entries[offset..<min(offset + RestoreState.entryPageSize, entries.count)]
+    }
+
+    /// The start of the page that holds `name`; a name that is not in the folder is rejected.
+    static func offset(revealing name: String, in entries: [RestoreEntry]) throws -> Int {
+        guard let index = entries.firstIndex(where: { $0.name == name }) else { throw LocalServiceIssue.invalidRequest }
+        return index - index % RestoreState.entryPageSize
+    }
+
     func search(snapshotID: String, query: String) async throws -> ([RestoreSearchMatch], Bool) {
         guard !query.isEmpty, query.utf8.count <= 256 else { throw LocalServiceIssue.invalidRequest }
         let root = try await resolve(snapshotID: snapshotID, components: [])
@@ -90,7 +112,7 @@ struct RestoreBrowser: Sendable {
             visited += 1
             if visited > 256 { return (matches, true) }
             let entries = try await service.directory(id: id).entries ?? []
-            guard entries.count <= 2000 else { return (matches, true) }
+            guard entries.count <= RestoreState.maximumDirectoryEntries else { return (matches, true) }
             for entry in entries {
                 inspected += 1
                 if inspected > 10_000 { return (matches, true) }

@@ -78,6 +78,43 @@ struct LocalServiceContractTests {
         }
     }
 
+    @Test func browsePagesOnlyAtPageBoundariesInsideAnOpenSnapshot() throws {
+        let repository = UUID()
+        let snapshot = String(repeating: "a", count: 32)
+        try AgentWirePacket(
+            AgentRequest(
+                .browse(repositoryID: repository, snapshotID: snapshot, components: [], entryOffset: 500, reveal: nil))
+        )
+        .decode(AgentRequest.self).validate()
+        for (id, offset) in [
+            (snapshot, -500), (snapshot, 250), (snapshot, RestoreState.maximumDirectoryEntries), (nil, 500),
+        ] as [(String?, Int)] {
+            #expect(throws: LocalServiceIssue.invalidRequest) {
+                try AgentRequest(
+                    .browse(repositoryID: repository, snapshotID: id, components: [], entryOffset: offset, reveal: nil)
+                )
+                .validate()
+            }
+        }
+        try AgentRequest(
+            .browse(repositoryID: repository, snapshotID: snapshot, components: [], entryOffset: 0, reveal: "a.txt")
+        )
+        .validate()
+        for (id, offset, reveal) in [
+            (snapshot, 500, "a.txt"), (nil, 0, "a.txt"), (snapshot, 0, "../a"), (snapshot, 0, ""),
+        ]
+            as [(String?, Int, String)]
+        {
+            #expect(throws: LocalServiceIssue.invalidRequest) {
+                try AgentRequest(
+                    .browse(
+                        repositoryID: repository, snapshotID: id, components: [], entryOffset: offset, reveal: reveal)
+                )
+                .validate()
+            }
+        }
+    }
+
     private func selection(_ path: String) throws -> BackupSource {
         try BackupSource(
             path: path,

@@ -71,7 +71,7 @@ package actor KopiaServerClient: KopiaBackupServing, KopiaRestoreServing {
     }
 
     package func snapshotManifests(source: KopiaSnapshotSource) async throws -> KopiaSnapshots {
-        try await get(.snapshotManifests(source))
+        try await get(.snapshotManifests(source), maximumBytes: Self.maximumCatalogBytes)
     }
 
     package func startUpload(source: KopiaSnapshotSource) async throws {
@@ -163,13 +163,19 @@ package actor KopiaServerClient: KopiaBackupServing, KopiaRestoreServing {
     }
 
     package func directory(id: String) async throws -> KopiaDirectory {
-        let directory: KopiaDirectory = try await get(.directory(id))
+        let directory: KopiaDirectory = try await get(.directory(id), maximumBytes: Self.maximumCatalogBytes)
         guard directory.stream == "kopia:directory" else { throw KopiaServerClientError.response }
         return directory
     }
 
-    private func get<Response: Decodable & Sendable>(_ route: KopiaServerRoute) async throws -> Response {
-        let data = try await read(route)
+    /// Kopia 0.23.1 returns whole directories and per-source manifest lists without paging; a directory entry
+    /// carries about 400 bytes of metadata, so large restore browser pages need more than the default 4 MiB.
+    package static let maximumCatalogBytes = 32 * 1024 * 1024
+
+    private func get<Response: Decodable & Sendable>(
+        _ route: KopiaServerRoute, maximumBytes: Int = 4 * 1024 * 1024
+    ) async throws -> Response {
+        let data = try await read(route, maximumBytes: maximumBytes)
         do { return try JSONDecoder().decode(Response.self, from: data) } catch {
             throw KopiaServerClientError.response
         }

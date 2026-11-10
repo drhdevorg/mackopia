@@ -35,11 +35,18 @@ public struct RestoreEntry: Codable, Sendable, Identifiable, Hashable {
 }
 
 public struct RestoreState: Codable, Sendable {
+    /// Bounds one XPC reply: 500 names of at most 255 bytes stay far below the response limit.
+    public static let entryPageSize = 500
+    /// Largest directory the browser opens; Kopia returns directories unpaged.
+    public static let maximumDirectoryEntries = 50_000
     public let repositoryID: UUID
     public var snapshots: [RestoreSnapshot] = []
     public var snapshotID: String?
     public var components: [String] = []
+    /// One page of the open directory, sorted folders first; `entryOffset` and `entryTotal` place it.
     public var entries: [RestoreEntry] = []
+    public var entryOffset = 0
+    public var entryTotal = 0
     public var matches: [RestoreSearchMatch] = []
     public var searchLimited = false
     public var preview = false
@@ -66,6 +73,10 @@ public enum RestoreSelection {
         guard components.count <= 64, components.allSatisfy(validComponent) else {
             throw LocalServiceIssue.invalidRequest
         }
+    }
+    /// Page starts are multiples of the page size inside the largest browsable directory.
+    public static func validEntryOffset(_ offset: Int) -> Bool {
+        offset >= 0 && offset < RestoreState.maximumDirectoryEntries && offset % RestoreState.entryPageSize == 0
     }
     public static func validComponent(_ value: String) -> Bool {
         !value.isEmpty && value != "." && value != ".." && !value.contains("/") && !value.contains("\0")

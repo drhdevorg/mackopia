@@ -12,6 +12,8 @@ final class RestoreStore {
     var selectedEntry: String?
     var components: [String] = []
     var entries: [RestoreEntry] = []
+    var entryOffset = 0
+    var entryTotal = 0
     var sortOrder = [KeyPathComparator(\RestoreSnapshot.date, order: .reverse)]
     var filter = ""
     var query = ""
@@ -48,9 +50,13 @@ final class RestoreStore {
 
     func load() {
         if repositoryID == nil { repositoryID = repositories.first?.id }
-        selectedSnapshotID = nil; components = []; entries = []; matches = []; showingSearch = false
+        selectedSnapshotID = nil; components = []; entries = []; entryOffset = 0; entryTotal = 0
+        matches = []; showingSearch = false
         guard let repositoryID else { return }
-        connection.send(.browse(repositoryID: repositoryID, snapshotID: nil, components: [])) { [weak self] in
+        connection.send(
+            .browse(repositoryID: repositoryID, snapshotID: nil, components: [], entryOffset: 0, reveal: nil)
+        ) {
+            [weak self] in
             guard let self else { return }; snapshots = connection.state?.restore?.snapshots ?? []
         }
     }
@@ -58,12 +64,36 @@ final class RestoreStore {
         selectedEntry = nil; components = []; showingSearch = false
         browse([])
     }
-    func browse(_ path: [String]) {
+    func browse(_ path: [String], offset: Int = 0, reveal: String? = nil) {
         guard let repositoryID, let selectedSnapshotID else { return }
-        connection.send(.browse(repositoryID: repositoryID, snapshotID: selectedSnapshotID, components: path)) {
-            [weak self] in
+        connection.send(
+            .browse(
+                repositoryID: repositoryID, snapshotID: selectedSnapshotID, components: path, entryOffset: offset,
+                reveal: reveal)
+        ) { [weak self] in
             guard let self, let state = connection.state?.restore else { return }
-            components = state.components; entries = state.entries; selectedEntry = nil; showingSearch = false
+            components = state.components; entries = state.entries; selectedEntry = reveal; showingSearch = false
+            entryOffset = state.entryOffset; entryTotal = state.entryTotal
+        }
+    }
+    /// Large folders arrive one page at a time; the pager only appears when there is more than one page.
+    var isPaged: Bool { entryTotal > RestoreState.entryPageSize }
+    var hasPreviousPage: Bool { entryOffset > 0 }
+    var hasNextPage: Bool { entryOffset + RestoreState.entryPageSize < entryTotal }
+    var pageLabel: String {
+        let first = entries.isEmpty ? 0 : entryOffset + 1
+        return String(
+            localized: "\(first.formatted())–\((entryOffset + entries.count).formatted()) von \(entryTotal.formatted())"
+        )
+    }
+    func previousPage() { browse(components, offset: max(0, entryOffset - RestoreState.entryPageSize)) }
+    func nextPage() { browse(components, offset: entryOffset + RestoreState.entryPageSize) }
+    /// A file hit opens its folder on the page that holds it, with the file selected.
+    func open(_ match: RestoreSearchMatch) {
+        if match.isDirectory {
+            browse(match.components)
+        } else {
+            browse(Array(match.components.dropLast()), reveal: match.components.last)
         }
     }
     func openEntry() {

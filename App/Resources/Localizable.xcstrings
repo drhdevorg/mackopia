@@ -2678,6 +2678,46 @@
           }
         }
       }
+    },
+    "Vorherige Seite": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous Page"
+          }
+        }
+      }
+    },
+    "Nächste Seite": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next Page"
+          }
+        }
+      }
+    },
+    "%@–%@ von %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@–%2$@ of %3$@"
+          }
+        }
+      }
+    },
+    "Einträge %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Items %@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

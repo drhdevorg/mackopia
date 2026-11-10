@@ -61,7 +61,7 @@ struct RestoreView: View {
                     }
                     List(store.matches) { match in
                         Button {
-                            store.browse(match.isDirectory ? match.components : Array(match.components.dropLast()))
+                            store.open(match)
                         } label: {
                             Label(
                                 match.components.joined(separator: "/"),
@@ -96,6 +96,7 @@ struct RestoreView: View {
                     .onKeyPress(.space) {
                         store.preview(); return .handled
                     }.disabled(!store.canBrowse)
+                    if store.isPaged { RestorePager() }
                 }
                 HStack {
                     Button("Beschreibung und Pin…") { store.editMetadata() }.disabled(!store.canBrowse)
@@ -124,6 +125,27 @@ struct RestoreView: View {
             .onChange(of: store.previewURL) { old, value in if old != nil && value == nil { store.clearPreview() } }
             .onDisappear { store.dismissPreview() }
     }
+}
+
+/// Moves through a large folder one page at a time; the range reads as "1–500 von 12.345".
+struct RestorePager: View {
+    @Environment(RestoreStore.self) private var store
+    var body: some View {
+        HStack {
+            Button("Vorherige Seite", systemImage: "chevron.left") { store.previousPage() }
+                .labelStyle(.iconOnly).help("Vorherige Seite").accessibilityLabel(Text("Vorherige Seite"))
+                .disabled(!store.hasPreviousPage || !store.canBrowse)
+            Text(store.pageLabel).monospacedDigit().foregroundStyle(.secondary)
+                .accessibilityLabel(Text("Einträge \(store.pageLabel)"))
+            Button("Nächste Seite", systemImage: "chevron.right") { store.nextPage() }
+                .labelStyle(.iconOnly).help("Nächste Seite").accessibilityLabel(Text("Nächste Seite"))
+                .disabled(!store.hasNextPage || !store.canBrowse)
+        }
+    }
+}
+
+#Preview("Large folder") {
+    RestorePager().environment(RestorePreviewData.store(largeFolder: true)).padding()
 }
 
 #Preview("Backups") { RestoreView().environment(RestorePreviewData.store()) }

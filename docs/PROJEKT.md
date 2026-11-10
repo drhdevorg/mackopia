@@ -1504,8 +1504,12 @@ Policy-Übertragung; der Aufrufer muss Quellidentität und Aktualität weiterhin
   Berechtigungen/Zeitstempel werden übernommen; die UI nennt die bekannten xattr-/ACL-/Finder-Metadatenlimits.
   Suche über Dateinamen im ausgewählten Snapshot (lazy, mit Abbruch): höchstens 256 Verzeichnisse,
   10.000 Einträge, 500 Treffer und Tiefe 64, mit sichtbarem Hinweis bei Begrenzung.
-  Browserseiten enthalten höchstens 2.000 Einträge; der Katalog höchstens 128 Quellen/1.000 Snapshots/8 MiB.
-  Größere Seiten/Kataloge werden ausdrücklich abgewiesen statt als vollständig leer oder vollständig geladen dargestellt.
+  Verzeichnisse bis 50.000 Einträge werden geöffnet und in Seiten zu 500 Einträgen übertragen (`browse` mit
+  `entryOffset`, Vielfaches der Seitengröße; Ordner vor Dateien über Seitengrenzen sortiert; `reveal` liefert für einen
+  Suchtreffer die Seite mit der Datei). Der Katalog umfasst
+  höchstens 1.024 Quellen/10.000 Snapshots/8 MiB und wird ungeteilt übertragen. Kopia-Antworten für Verzeichnisse
+  und Snapshot-Listen sind auf 32 MiB begrenzt. Größere Verzeichnisse/Kataloge sowie Seiten hinter dem Ende werden
+  ausdrücklich abgewiesen statt als vollständig leer oder vollständig geladen dargestellt.
   Der Snapshot-Selektor behält die vollständige fremde Benutzer-/Rechneridentität; lokale Originalquellen sind nicht nötig.
   Quick Look stellt ausschließlich Dateien bis 50 MB unter einem privaten Cache-Sitzungsordner wieder her und
   löscht die eigene Sitzung beim Schließen bzw. Dienst-Shutdown. Beim Dienststart und vor einer neuen Vorschau
@@ -1546,7 +1550,7 @@ Byte-/Datumsformatierung ausschließlich mit `ByteCountFormatStyle`, `Date.Forma
 
 ## 12. App ↔ Agent-Protokoll
 
-**Verdrahteter Phase-1/2/3/Remote-Vertrag (Version 7):** `AgentServiceClient/Server` transportieren begrenzte
+**Verdrahteter Phase-1/2/3/Remote-Vertrag (Version 8):** `AgentServiceClient/Server` transportieren begrenzte
 JSON-Daten in einem Codable-XPC-Umschlag. Vor der Domain-Dekodierung gelten 1 MiB für Requests und
 16 MiB für Antworten. Version/UUID korrelieren jede Antwort; Secrets sind ausschließlich in Setup- und Credential-Aktualisierungsrequests zulässig.
 Jede authentifizierte Sitzung nimmt genau einen Request an und sendet die asynchrone Antwort über
@@ -1814,6 +1818,7 @@ Neuere ausdrücklich ersetzende Entscheidungen haben Vorrang; alte Phasen-/Platt
 
 | Datum | Entscheidung | Grund |
 |---|---|---|
+| 2026-11-10 | Restore-Browser blättert große Verzeichnisse in Seiten zu 500 Einträgen (bis 50.000 je Verzeichnis, XPC Version 8 mit `entryOffset`); der Snapshot-Katalog bleibt ungeteilt mit höheren Grenzen (1.024 Quellen/10.000 Snapshots/8 MiB) | Kopia 0.23.1 liefert Verzeichnisse und Manifestlisten ungeteilt; dienstseitiges Blättern begrenzt jede XPC-Antwort, während der Katalog für Sortierung/Filter in der Tabelle vollständig bleiben muss und 10.000 Snapshots im 8-MiB-Budget liegen. Seiten nur an Vielfachen der Seitengröße, damit kein Offset beliebige Ausschnitte erzwingt |
 | 2026-11-10 | Menüleiste öffnet App-Bereiche über festes `AppRoute`: Startargument `-MacKopiaRoute <route>` und nutzlastfreie verteilte Mitteilung `<App-Bundle-ID>.route` | Startargumente werden bei bereits laufender App ignoriert; URL-Schema bräuchte eine eigene Info.plist, Apple Events ein Entitlement. Absender ist nicht authentifiziert, daher nur feste Werte (overview/plans/destinations/restore/activity) ohne Daten, Pfade oder Aktionen; unbekannte Werte werden verworfen. Kein XPC-Vertragswechsel, keine Entitlements/Buildphasen. |
 | 2026-11-10 | Eine ausdrücklich angeforderte Prüfung, die vor dem Kopia-Aufruf scheitert, meldet ihren Grund statt `verificationFailed`: Preflight-Ablehnung nutzt die Backup-Zuordnung (Ziel/Rechte/Schlüsselbund/Bedingungen), fehlendes erfolgreiches Backup das neue `LocalServiceIssue.noBackupToVerify` mit „Jetzt sichern“ | Solche Versuche erzeugen bewusst keinen Prüfnachweis; der Verweis auf Aktivität führte daher ins Leere (Live-Befund). Kein erfundener Nachweis, keine Änderung der automatischen Prüfungen. |
 | 2026-10-25 | Agentverwalteter Login-Keychain ohne Team/Access Group, Phase-1-XPC Version 2 und alleiniger manueller Runtime-Besitzer | Kontolose SecItem-Anbindung ohne neue Entitlements oder Secret-Dateien. Gebundene Volume-Auswahl, Serialisierung, Cleanup und begrenzte ereignisgesteuerte Zustandsantworten verbinden App und bestehende Engine; lokale Einrichtung/Editor/Status sind DE/EN verdrahtet. Automatik bleibt Phase 2. |

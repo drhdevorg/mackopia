@@ -39,6 +39,45 @@ struct RestoreBrowserTests {
             try await browser.resolve(snapshotID: fixture.snapshot, components: ["link", "victim"])
         }
     }
+    @Test func pagesLargeDirectoriesInDisplayOrder() async throws {
+        let fixture = RestoreBrowserFixture()
+        // Above the former 2,000-entry rejection; folders sort ahead of files across page boundaries.
+        await fixture.setEntries(
+            (0..<1_234).map { ["name": String(format: "file-%04d", $0), "type": "f", "obj": fixture.file] }
+                + [["name": "zz-folder", "type": "d", "obj": fixture.root]])
+        let all = try await RestoreBrowser(service: fixture).entries(snapshotID: fixture.snapshot, components: [])
+        #expect(all.count == 1_235)
+        let first = try RestoreBrowser.page(all, offset: 0)
+        #expect(first.count == RestoreState.entryPageSize)
+        #expect(first.first?.name == "zz-folder")
+        let last = try RestoreBrowser.page(all, offset: 1_000)
+        #expect(last.map(\.name) == (999..<1_234).map { String(format: "file-%04d", $0) })
+        for offset in [1_500, 250, -500, RestoreState.maximumDirectoryEntries] {
+            #expect(throws: LocalServiceIssue.invalidRequest) { try RestoreBrowser.page(all, offset: offset) }
+        }
+        #expect(try RestoreBrowser.page([], offset: 0).isEmpty)
+        #expect(try RestoreBrowser.offset(revealing: "zz-folder", in: all) == 0)
+        #expect(try RestoreBrowser.offset(revealing: "file-0499", in: all) == 500)
+        #expect(try RestoreBrowser.offset(revealing: "file-1233", in: all) == 1_000)
+        #expect(throws: LocalServiceIssue.invalidRequest) { try RestoreBrowser.offset(revealing: "missing", in: all) }
+    }
+    @Test func rejectsDirectoriesBeyondTheBrowsableLimit() async throws {
+        let fixture = RestoreBrowserFixture()
+        await fixture.setEntries(
+            Array(
+                repeating: ["name": "same", "type": "f", "obj": fixture.file],
+                count: RestoreState.maximumDirectoryEntries + 1))
+        await #expect(throws: LocalServiceIssue.invalidRequest) {
+            try await RestoreBrowser(service: fixture).entries(snapshotID: fixture.snapshot, components: [])
+        }
+    }
+    @Test func reusesTheCatalogInsteadOfListingSourcesAgain() async throws {
+        let fixture = RestoreBrowserFixture()
+        let browser = RestoreBrowser(service: fixture)
+        let catalog = try await browser.snapshots()
+        _ = try await browser.entries(snapshotID: fixture.snapshot, components: [], catalog: catalog)
+        #expect(await fixture.sourceCalls == 1)
+    }
     @Test func boundedSearchSignalsIncompleteResultsAndCancellation() async throws {
         let fixture = RestoreBrowserFixture()
         // A cyclic synthetic directory graph must terminate with an explicit limited result.

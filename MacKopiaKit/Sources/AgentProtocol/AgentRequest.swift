@@ -3,14 +3,15 @@ import Foundation
 
 /// Secrets are accepted only in setup commands, never returned in responses or events.
 public struct AgentRequest: Codable, Sendable, CustomReflectable {
-    public static let currentVersion: UInt32 = 7
+    public static let currentVersion: UInt32 = 8
     public let version: UInt32
     public let id: UUID
     public let command: Command
 
     public enum Command: Codable, Sendable {
         case state(after: UUID?)
-        case browse(repositoryID: UUID, snapshotID: String?, components: [String])
+        /// `reveal` names an entry of the opened folder; the reply is the page that contains it.
+        case browse(repositoryID: UUID, snapshotID: String?, components: [String], entryOffset: Int, reveal: String?)
         case restore(repositoryID: UUID, snapshotID: String, components: [String], destination: BackupSource)
         case cancelRestore(UUID)
         case searchRestore(repositoryID: UUID, snapshotID: String, query: String)
@@ -79,7 +80,13 @@ public struct AgentRequest: Codable, Sendable, CustomReflectable {
         case .previewRestore(_, let id, let components):
             try RestoreSelection.validate(snapshotID: id, components: components)
             guard !components.isEmpty else { throw LocalServiceIssue.invalidRequest }
-        case .browse(_, let id, let components): try RestoreSelection.validate(snapshotID: id, components: components)
+        case .browse(_, let id, let components, let offset, let reveal):
+            try RestoreSelection.validate(snapshotID: id, components: components)
+            guard RestoreSelection.validEntryOffset(offset), id != nil || offset == 0,
+                reveal.map({ RestoreSelection.validComponent($0) && id != nil && offset == 0 }) ?? true
+            else {
+                throw LocalServiceIssue.invalidRequest
+            }
         case .restore(_, let id, let components, let destination):
             try RestoreSelection.validate(snapshotID: id, components: components)
             guard destination.bookmark == nil else { throw LocalServiceIssue.invalidRequest }

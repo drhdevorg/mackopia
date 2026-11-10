@@ -28,6 +28,12 @@ struct RestoreServiceIntegrationTests {
             [.posixPermissions: 0o640, .modificationDate: Date(timeIntervalSince1970: 1_700_000_000)],
             ofItemAtPath: file.path)
         try Data().write(to: source.appendingPathComponent("empty"))
+        // One entry more than a page, so the real Kopia directory listing is paged by the service.
+        let many = source.appendingPathComponent("many")
+        try FileManager.default.createDirectory(at: many, withIntermediateDirectories: false)
+        for index in 0...RestoreState.entryPageSize {
+            try Data().write(to: many.appendingPathComponent(String(format: "item-%04d", index)))
+        }
         try FileManager.default.createSymbolicLink(
             atPath: source.appendingPathComponent("link").path, withDestinationPath: "nested/Überblick + #.txt")
         let secrets = ServiceTestSecrets()
@@ -76,6 +82,20 @@ struct RestoreServiceIntegrationTests {
         #expect(snapshot.sourcePath == source.path)
         try await service.browse(repositoryID: repository.id, snapshotID: snapshot.id, components: ["nested"])
         #expect(try await service.state().restore?.entries.first?.name == "Überblick + #.txt")
+        try await service.browse(
+            repositoryID: repository.id, snapshotID: snapshot.id, components: ["many"],
+            entryOffset: RestoreState.entryPageSize)
+        let page = try #require(try await service.state().restore)
+        #expect(page.entryTotal == RestoreState.entryPageSize + 1 && page.entryOffset == RestoreState.entryPageSize)
+        #expect(page.entries.map(\.name) == [String(format: "item-%04d", RestoreState.entryPageSize)])
+        await #expect(throws: LocalServiceIssue.invalidRequest) {
+            try await service.browse(
+                repositoryID: repository.id, snapshotID: snapshot.id, components: ["many"],
+                entryOffset: 2 * RestoreState.entryPageSize)
+        }
+        try await service.browse(
+            repositoryID: repository.id, snapshotID: snapshot.id, components: ["many"], reveal: "item-0500")
+        #expect(try await service.state().restore?.entryOffset == RestoreState.entryPageSize)
         try await service.searchRestore(repositoryID: repository.id, snapshotID: snapshot.id, query: "überblick")
         #expect(try await service.state().restore?.matches.first?.components == ["nested", "Überblick + #.txt"])
         // Existing conflicting data in the selected parent remains byte-for-byte unchanged.
