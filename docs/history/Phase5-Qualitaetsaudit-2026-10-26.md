@@ -201,3 +201,21 @@ Ziel: neue Bedienwege live prüfen. Temp-Ordner `/private/tmp/mackopia-live-audi
 
 Nebenbefund Umgebung: Command Line Tools 27.2 am 10.11. installiert, `xcode-select` zeigt seither auf CLT;
 Builds liefen mit `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
+
+### Ursachenanalyse Dienststart (Claude, 2026-11-10)
+
+- `launchctl print gui/502/com.example.MacKopia.Agent` zeigt `managed_by = com.apple.xpc.ServiceManagement` und
+  `LWCR = { reqs = { cdhash = { $in = [ <data> ] } } }`. Andere SMAppService-Jobs im selben Domain (SuperDuper,
+  Microsoft) tragen stattdessen `team-identifier` + `signing-identifier` (validation-category 6) und überleben Updates.
+- AMFI-Fehler `c[5]p[1]m[1]e[0]`: laut Apple DTS (Forum 795022) c5 = LightweightCodeRequirements-Spawn-Constraint,
+  p1 = Prozess selbst, m1 = kein Treffer, e0 = kein Auswertungsfehler.
+- smd/BTM liefern die LWCR aus dem BTM-Datensatz (`getEffectiveDisposition … have LWCR=true`), nicht neu aus dem Binary.
+- Versuche ohne Erfolg: `unregister()`+`register()` (BTM-Generation neu = 1, Constraint weiter verletzt), geänderter
+  LaunchAgent-Plist-Wert (ExitTimeOut, kam in launchd an), Neubau des Codex-Stands `794de02` (andere cdhash
+  `2b1e2560…`). Kein zweites Bundle mit gleicher ID bei Launch Services; Standalone- und eingebettetes Agent-Binary identisch.
+- Externe Berichte (Apple-Forum 795022; GitHub znasllc-io/memql-cockpit#546, GeiserX/VPN-Bypass#242): Signatur wird
+  bei Registrierung festgehalten, Neuregistrieren antwortet „already registered“; berichtete Heilung nur durch
+  Neuanfang (Hintergrund aus, App löschen, Eintrag verschwinden lassen, neu installieren) bzw. stabile Team-Signatur.
+  Ein Autor folgert: ad-hoc-Builds überleben unter SMAppService kein Update.
+- Folge: Mit kontoloser Ad-hoc-Signatur bricht vermutlich jedes Sparkle-Update den Hintergrunddienst. Nicht mit einem
+  echten Update-Lauf bewiesen; Produktentscheidung offen. Die neue Reparaturtaste behebt diesen Fall nicht.
