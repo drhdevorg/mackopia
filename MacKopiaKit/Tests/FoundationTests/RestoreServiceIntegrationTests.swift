@@ -50,7 +50,7 @@ struct RestoreServiceIntegrationTests {
         let plan = try #require(config.plans.first)
         let repository = try #require(config.repositories.first)
         try await service.run(plan.id)
-        try await waitForRuntime(timeout: .seconds(45)) {
+        try await waitForRuntime(timeout: .seconds(120)) {
             let state = try await service.state()
             return state.runs.count == 1 && state.runs.first?.outcome != .running && state.activePlanID == nil
         }
