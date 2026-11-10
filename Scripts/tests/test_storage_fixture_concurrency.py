@@ -3,6 +3,7 @@
 import base64
 import http.client
 import importlib.util
+import socket
 from pathlib import Path
 import sys
 import tempfile
@@ -62,6 +63,22 @@ class StorageFixtureConcurrencyTests(unittest.TestCase):
                 for thread in threads:
                     thread.join()
         self.assertEqual(failures, [])
+
+    def test_answers_only_after_reading_the_request_body(self):
+        # Kopia sends PROPFIND with an XML body. Answering a missing folder and closing before the body is read
+        # resets the connection while the client still writes ("broken pipe" under load in CI).
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "storage"
+            root.mkdir()
+            with BACKENDS.storage_server(root, "user", "secret", "access", "token", "key") as (port, _):
+                body = b"<propfind/>" * 200_000
+                with socket.create_connection(("127.0.0.1", port), timeout=10) as connection:
+                    head = ("PROPFIND /missing/ HTTP/1.1\r\nHost: 127.0.0.1\r\nDepth: 1\r\n"
+                            + AUTH["Authorization"].join(["Authorization: ", "\r\n"])
+                            + "Content-Length: " + str(len(body)) + "\r\n\r\n")
+                    connection.sendall(head.encode() + body)
+                    reply = connection.recv(64)
+        self.assertTrue(reply.startswith(b"HTTP/1.0 404"), reply)
 
 
 if __name__ == "__main__":

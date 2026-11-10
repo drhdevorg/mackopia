@@ -64,6 +64,13 @@ def storage_server(repository, username, password, access_key, session_token, se
             self.serve(head=False)
 
         def serve(self, head):
+            # Read the whole request body before any response. Answering early and closing the socket while
+            # the client still sends (Kopia's PROPFIND carries an XML body) breaks its pipe on a busy machine.
+            length = int(self.headers.get("Content-Length", "0") or "0")
+            if not 0 <= length <= 4 * 1024 * 1024:
+                self.send_error(413)
+                return
+            body = self.rfile.read(length) if length else b""
             path = unquote(urlsplit(self.path).path)
             auth = self.headers.get("Authorization", "")
             if path.startswith("/bucket/"):
@@ -94,14 +101,10 @@ def storage_server(repository, username, password, access_key, session_token, se
                 return
             if self.command in ("PUT", "MKCOL", "DELETE", "MOVE"):
                 if self.command == "PUT":
-                    length = int(self.headers.get("Content-Length", "0"))
-                    if not 0 <= length <= 4 * 1024 * 1024:
-                        self.send_error(413)
-                        return
                     target.parent.mkdir(parents=True, exist_ok=True)
                     # Write beside the target and rename, so a concurrent GET never reads a partial object.
                     partial = target.with_name(target.name + ".partial-" + secrets.token_hex(8))
-                    partial.write_bytes(self.rfile.read(length))
+                    partial.write_bytes(body)
                     partial.replace(target)
                 elif self.command == "MKCOL":
                     target.mkdir(parents=True, exist_ok=True)
