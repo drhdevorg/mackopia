@@ -5,6 +5,10 @@ import Testing
 
 @testable import AgentProtocol
 
+// SecStaticCodeCheckValidity blocks its thread while Security finishes the work on other default-QoS threads.
+// Concurrent cases filled a hosted runner's few cooperative threads and deadlocked the whole package suite
+// (sampled on CI, 2026-11-10); production validates once at startup and never in parallel.
+@Suite(.serialized)
 struct AgentSigningIdentityTests {
     @Test func adHocBundleRequiresExactCodeHashAndIdentifierWithoutTeam() throws {
         let fixture = try SignedAgentFixture()
