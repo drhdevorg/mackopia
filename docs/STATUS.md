@@ -89,7 +89,9 @@ Aktueller Arbeitsbranch: `claude/p5-restore-pagination` (Basis `main` @ `19a0a6d
 - Behoben: sporadische WebDAV-Prüfablehnung (lokal unter Last, CI 2× auf PR #9) lag am Test-Fixture, nicht am
   Produkt. Der threadende Fixture-Server brach PROPFIND ab, wenn Kopia während der Auflistung eigene Log-Blobs
   umbenannte (Stresstest: 1.438 von 3.000 Listings ohne Antwort). Jetzt überspringt er verschwundene Einträge,
-  schreibt PUT atomar und antwortet bei gleichzeitig gelöschtem Objekt mit 404 (`test_storage_fixture_concurrency`).
+  schreibt PUT atomar und antwortet bei gleichzeitig gelöschtem Objekt mit 404. Eigentlicher CI-Befund (per
+  temporärer Diagnose): Kopia-PROPFIND brach mit `broken pipe` ab, weil das Fixture antwortete und schloss, bevor es den
+  Request-Body gelesen hatte; jetzt liest es jeden Body zuerst (`test_storage_fixture_concurrency`).
 
 ## Offene Live-Nachweise und Grenzen – kein globaler Entwicklungsstopp
 

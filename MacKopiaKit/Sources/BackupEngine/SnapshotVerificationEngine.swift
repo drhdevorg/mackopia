@@ -135,8 +135,6 @@ package actor SnapshotVerificationEngine {
             }
         } catch {
             if Task.isCancelled || error is CancellationError { throw CancellationError() }
-            FileHandle.standardError.write(
-                Data("VERIFYDIAG engine kind=\(kind) error=\(String(reflecting: error))\n".utf8))  // TEMP CI DIAGNOSIS
             if let startedAt = await attempt.startedAt {
                 _ = try await record(
                     plan: plan, startedAt: startedAt, validFor: validFor, kind: kind, filesPercent: filesPercent,
