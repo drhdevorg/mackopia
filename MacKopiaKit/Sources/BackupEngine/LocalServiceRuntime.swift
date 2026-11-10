@@ -185,9 +185,16 @@ extension LocalBackupService {
 }
 
 extension AutomaticBackupRuntime {
-    func currentPlanID() async -> UUID? {
+    /// Same precedence as the drain loop: running backup, explicit check, post-backup work, then queued work.
+    /// Both queue reads happen before the runtime's own fields are read: a suspension between them would let a
+    /// requested check move into `checkingPlanID` unseen and briefly report an idle service.
+    func currentWork() async -> (planID: UUID, work: ActiveWork)? {
         let active = await queue.activeJobs.values.first?.plan.id
         let pending = await queue.pending.first?.plan.id
-        return active ?? checkingPlanID ?? postBackupTask?.planID ?? pending ?? requestedChecks.first
+        if let active { return (active, .backup) }
+        if let id = checkingPlanID { return (id, .verification) }
+        if let id = postBackupTask?.planID { return (id, .finishing) }
+        if let id = pending ?? requestedChecks.first { return (id, .queued) }
+        return nil
     }
 }

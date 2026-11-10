@@ -161,8 +161,15 @@ struct FoundationView: View {
                             Text(bytes, format: .byteCount(style: .file)).monospacedDigit()
                         }
                     }
-                } else if connection.state?.activePlanID != nil {
-                    Section { ProgressView("Backup wird vorbereitet") }
+                } else if let work = connection.state?.activeWork {
+                    Section {
+                        switch work {
+                        case .backup: ProgressView("Backup wird vorbereitet")
+                        case .verification: ProgressView("Integritätsprüfung läuft")
+                        case .finishing: ProgressView("Backup wird abgeschlossen")
+                        case .queued: ProgressView("Wartet auf Start")
+                        }
+                    }
                 }
                 ForEach(plans) { plan in
                     Section(plan.name) {

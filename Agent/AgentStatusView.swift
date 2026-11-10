@@ -1,3 +1,4 @@
+import BackupDomain
 import SwiftUI
 
 struct AgentStatusView: View {
@@ -15,9 +16,16 @@ struct AgentStatusView: View {
                     Button("Wiederherstellung anzeigen") { store.openApp(.restore) }
                 }
             } else if let id = store.state?.activePlanID {
-                Label("Backup läuft", systemImage: "arrow.triangle.2.circlepath")
+                let title: LocalizedStringKey =
+                    switch store.state?.activeWork {
+                    case .verification: "Integritätsprüfung läuft"
+                    case .finishing: "Backup wird abgeschlossen"
+                    case .queued: "Wartet auf Start"
+                    case .backup, nil: "Backup läuft"
+                    }
+                Label(title, systemImage: "arrow.triangle.2.circlepath")
                 ProgressView(value: store.state?.progress?.fractionCompleted)
-                    .accessibilityLabel(Text("Backup läuft"))
+                    .accessibilityLabel(Text(title))
                 Button("Stoppen") { store.stop(id) }
             } else if let plans = store.state?.configuration?.plans, !plans.isEmpty {
                 ForEach(plans) { plan in

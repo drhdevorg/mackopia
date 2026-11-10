@@ -5,6 +5,8 @@ public struct LocalServiceState: Codable, Sendable {
     public let configuration: BackupConfiguration?
     public let runs: [JobRun]
     public let activePlanID: UUID?
+    /// Nil from older services; the UI then treats active work as a backup.
+    public let activeWork: ActiveWork?
     public let progress: BackupProgress?
     public let issue: LocalServiceIssue?
     public let revision: UUID
@@ -14,12 +16,14 @@ public struct LocalServiceState: Codable, Sendable {
 
     public init(
         configuration: BackupConfiguration?, runs: [JobRun] = [], activePlanID: UUID? = nil,
-        progress: BackupProgress? = nil, issue: LocalServiceIssue? = nil, revision: UUID = UUID(),
+        activeWork: ActiveWork? = nil, progress: BackupProgress? = nil, issue: LocalServiceIssue? = nil,
+        revision: UUID = UUID(),
         plans: [PlanRuntimeState] = [], globalPause: BackupPauseState? = nil, restore: RestoreState? = nil
     ) {
         self.configuration = configuration
         self.runs = Array(runs.prefix(50))
         self.activePlanID = activePlanID
+        self.activeWork = activePlanID == nil ? nil : activeWork ?? .backup
         self.progress = progress
         self.issue = issue
         self.revision = revision

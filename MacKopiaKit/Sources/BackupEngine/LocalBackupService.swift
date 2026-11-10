@@ -109,14 +109,17 @@ public actor LocalBackupService {
             removeObserver(id)
         }
         try Task.checkCancellation()
-        let queued = await runtime?.currentPlanID()
-        let snapshot = (configuration, active ?? queued, progress, issue, revision)
+        let current = await runtime?.currentWork()
+        // A reported activity without matching runtime work is a manual backup.
+        let work = active.map { id in current?.planID == id ? current?.work ?? .backup : .backup } ?? current?.work
+        let snapshot = (configuration, active ?? current?.planID, progress, issue, revision)
         let runs = try await history.recent(limit: 50)
         let plans = try await runtimeProjection()
         let pause = await runtime?.pauseState()
         return LocalServiceState(
             configuration: snapshot.0, runs: runs,
-            activePlanID: snapshot.1, progress: snapshot.2, issue: snapshot.3, revision: snapshot.4, plans: plans,
+            activePlanID: snapshot.1, activeWork: work, progress: snapshot.2, issue: snapshot.3, revision: snapshot.4,
+            plans: plans,
             globalPause: pause, restore: restoreState)
     }
 

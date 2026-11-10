@@ -33,7 +33,13 @@ enum PreviewData {
                             health: HealthAssessment(
                                 planID: plan.id, lastSuccessfulBackup: .now.addingTimeInterval(-1800),
                                 reasons: critical ? [.verificationFailed] : [.verificationUnavailable]),
-                            verification: nil, testRestore: nil, maintenance: nil)
+                            verification: critical
+                                ? VerificationResult(
+                                    planID: plan.id, repositoryID: repository.id, kind: .snapshotVerify,
+                                    startedAt: .now.addingTimeInterval(-600), endedAt: .now.addingTimeInterval(-540),
+                                    dueAt: .now.addingTimeInterval(86_400), outcome: .failed)
+                                : nil,
+                            testRestore: nil, maintenance: nil)
                     ])
             connection.message = issue.map(AgentConnection.description)
         } catch { connection.message = AgentConnection.description(.invalidRequest) }

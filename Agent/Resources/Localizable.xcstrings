@@ -1308,6 +1308,36 @@
           }
         }
       }
+    },
+    "Integritätsprüfung läuft": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifying backup"
+          }
+        }
+      }
+    },
+    "Backup wird abgeschlossen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finishing backup"
+          }
+        }
+      }
+    },
+    "Wartet auf Start": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting to start"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
