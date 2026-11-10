@@ -232,5 +232,7 @@ Builds liefen mit `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
 - Prüfen ohne erreichbares Altziel zeigte die Fenstermeldung mit „Aktivität anzeigen“; Ziel korrekt, Liste ohne Prüfeintrag.
   Behoben 2026-11-10: Aktivität führt letzte Prüfung/Testwiederherstellung/Wartung je Plan; laufende Prüfung
   heißt „Integritätsprüfung läuft“ statt „Backup wird vorbereitet“ (`ActiveWork`).
+  Live nachgeprüft: Label korrekt; dieser Befund selbst bleibt offen, weil eine vor dem Kopia-Aufruf gescheiterte
+  Prüfung keinen Nachweis speichert (kein Backup/kein Ziel) und die Meldung dennoch auf Aktivität verweist.
 - Ein SecurityAgent-Dialog erschien während der Prüfung (vermutlich Schlüsselbund-Freigabe für neues Agent-Binary);
   nicht bedient, dem Nutzer gemeldet.

@@ -68,12 +68,17 @@ Aktueller Arbeitsbranch: `claude/p5-native-quality` (von Claude übernommen, Bas
   Drop erreicht in gruppierter `Form` nur Section/Form (Test-Harness: List/ForEach-Drop feuert dort nie) und
   Startroute wurde vom Fensteraufbau überschrieben (jetzt in `.task`). Menüleisten-Fenster selbst nicht bedienbar
   (Computer Use findet den Agent nicht); Routen-Mechanik direkt ausgelöst. Kein XCUITest vorhanden.
-- Behoben (nach Live-Befund, noch nicht live nachgeprüft): Aktivität zeigt neben Backup-Läufen die jeweils letzte
+- Teilweise behoben: Aktivität zeigt neben Backup-Läufen die jeweils letzte
   Integritätsprüfung, Testwiederherstellung und Wartung je Plan (`ActivityEntry`, Spalten Vorgang/Plan, Fehler rot
   mit Symbol); `LocalServiceState.activeWork` unterscheidet Backup/Prüfung/Abschluss/Wartend für Übersicht und
   Menüleiste. Ältere Prüfungen bleiben ungespeichert (nur letzter Stand je Plan). Offen: Drop-Reihenfolge folgt Finder.
   Prüfung: 575 Tests, nur die 6 bekannten TLS-Suites rot; WebDAV-Lebenszyklus deckte eine Lese-Reihenfolge-Race in
   `currentWork()` auf (behoben, danach 3× grün). Xcode `build test` grün, keine Warnung, Lint sauber.
+- Live 2026-11-10 (bc23fe3): neue Spalten und „Integritätsprüfung läuft“ bestätigt. **Weiter offen:** Prüfung ohne
+  erfolgreiches Backup bzw. ohne erreichbares Ziel scheitert vor dem Kopia-Aufruf, speichert absichtlich keinen
+  Nachweis (`SnapshotVerificationEngine`) und meldet trotzdem `verificationFailed` → „Aktivität anzeigen“ führt
+  weiter ins Leere. Neubau-Ablauf: Freigabe aus/an, dann in der App „Hintergrunddienst aktivieren“; Keychain-Abfrage
+  des neuen Agents bestätigt der Nutzer.
 - Live 2026-11-10 gefunden und behoben: „Hintergrunddienst aktivieren“ blieb bei `requiresApproval` und bei
   „enabled“ ohne startbaren launchd-Job stumm. Jetzt Freigabehinweis + Anmeldeobjekte bzw. explizite Reparatur
   (unregister/register, nur ohne Verbindung). 10 Registrierungstests grün; Hinweis live in der App gesehen.
@@ -111,7 +116,7 @@ Temp-Root: `/private/tmp/mackopia-live-audit-xp05r3_k`. Fenster/Menüleiste/Shor
 Fehleraktionen/Remote-Assistenten prüfen; DE/EN, Light/Dark/Kontrast, minimales Fenster, Tastatur/VoiceOver
 mit Screenshots erfassen und Instruments Idle-CPU/Speicher/I/O/Updatefrequenz messen.
 FDA-Freigabe abgelehnt; geschützten Live-Lauf erst nach einer neuen ausdrücklichen Freigabe fortsetzen.
-Zuerst Aktivität/Prüflabel live nachprüfen (Agent-Binary geändert: Hintergrundfreigabe aus/an). Danach Quellen-/Snapshot-Pagination; keine spekulativen Frameworks/Entitlements. Registrierung/FDA/Keychain
+Zuerst Prüfmeldung ohne Nachweis entscheiden und beheben (siehe oben). Danach Quellen-/Snapshot-Pagination; keine spekulativen Frameworks/Entitlements. Registrierung/FDA/Keychain
 nur mit bewussten nötigen Systemfreigaben; reale Provider/Hardware bleiben separat.
 Fertig: belegter integrierter Audit, behobene Befunde mit Tests, relevante Prüfungen und kompakte Übergabe.
 Name/Bundle-Präfix MacKopia / com.example.MacKopia; Lizenzmodell offen.
