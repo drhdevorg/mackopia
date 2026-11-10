@@ -15,14 +15,35 @@ struct KopiaConfigurationPipeTests {
         return directory
     }
 
+    /// A blocking read on a Swift concurrency thread can starve the writer that must resume to fill the pipe
+    /// (hosted runners have only a few cooperative threads), so the read runs on its own thread.
+    private static func readToEnd(_ descriptor: Int32) async throws -> Data? {
+        try await withCheckedThrowingContinuation { continuation in
+            Thread {
+                let reader = FileHandle(fileDescriptor: descriptor, closeOnDealloc: false)
+                continuation.resume(with: Result { try reader.readToEnd() })
+            }.start()
+        }
+    }
+
+    /// The child reads the pipe, so its writer must run while the test waits; see `readToEnd`.
+    private static func waitForExit(_ pid: pid_t) async -> (pid: pid_t, status: Int32) {
+        await withCheckedContinuation { continuation in
+            Thread {
+                var status: Int32 = 0
+                let reaped = waitpid(pid, &status, 0)
+                continuation.resume(returning: (reaped, status))
+            }.start()
+        }
+    }
+
     @Test func largePayloadAndEOF() async throws {
         let root = try repositoryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
         let payload = Data((0..<KopiaConfigurationPipe.maximumPayloadSize).map { UInt8($0 % 251) })
         let transport = try KopiaConfigurationPipe(payload: payload, repositoryDirectory: root)
         defer { transport.close() }
-        let reader = FileHandle(fileDescriptor: transport.readDescriptor, closeOnDealloc: false)
-        let received = try reader.readToEnd()
+        let received = try await Self.readToEnd(transport.readDescriptor)
         try await transport.waitForDelivery()
         #expect(received == payload)
         #expect(fcntl(transport.readDescriptor, F_GETFD) & FD_CLOEXEC != 0)
@@ -150,9 +171,9 @@ struct KopiaConfigurationPipeTests {
         let result = posix_spawn(&pid, arguments[0], &actions, nil, &argv, &environment)
         #expect(result == 0)
         guard result == 0 else { return }
-        var status: Int32 = 0
-        #expect(waitpid(pid, &status, 0) == pid)
-        #expect(status == 0)
+        let exit = await Self.waitForExit(pid)
+        #expect(exit.pid == pid)
+        #expect(exit.status == 0)
         try await transport.waitForDelivery()
     }
 }
