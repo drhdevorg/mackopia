@@ -25,8 +25,13 @@ package struct KopiaSnapshotVerifier: Sendable {
             request.timeout = .seconds(6 * 60 * 60)
             let result = try await process.run(request)
             // TEMP CI DIAGNOSIS: revert before merge.
-            if result.exitCode != 0 || !String(decoding: result.standardOutput, as: UTF8.self).contains("\"errorCount\":0") {
-                FileHandle.standardError.write(Data(("VERIFYDIAG exit=\(result.exitCode) out=\(String(decoding: result.standardOutput.prefix(2000), as: UTF8.self)) err=\(String(decoding: result.standardError.suffix(4000), as: UTF8.self))\n").utf8))
+            if result.exitCode != 0
+                || !String(decoding: result.standardOutput, as: UTF8.self).contains("\"errorCount\":0")
+            {
+                FileHandle.standardError.write(
+                    Data(
+                        ("VERIFYDIAG exit=\(result.exitCode) out=\(String(decoding: result.standardOutput.prefix(2000), as: UTF8.self)) err=\(String(decoding: result.standardError.suffix(4000), as: UTF8.self))\n")
+                            .utf8))
             }
             guard result.exitCode == 0 else { throw KopiaProcessError.commandFailed(exitCode: result.exitCode) }
             let response = try JSONDecoder().decode(Response.self, from: result.standardOutput)
