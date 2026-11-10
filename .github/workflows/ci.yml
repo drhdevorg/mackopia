@@ -65,6 +65,6 @@ jobs:
         timeout-minutes: 30
         env:
           MACKOPIA_REQUIRE_KOPIA_INTEGRATION: "1"
-        run: swift test --package-path MacKopiaKit
+        run: ./Scripts/run-package-tests.sh
       - name: App build, bundle layout and ad-hoc signature tests
         run: xcodebuild -scheme MacKopia -destination 'platform=macOS' build test
