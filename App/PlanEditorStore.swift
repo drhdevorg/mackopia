@@ -48,12 +48,39 @@ final class PlanEditorStore {
         name = plan.name; enabled = plan.isEnabled; retention = plan.retention.preset; sources = plan.sources
     }
 
-    func addSource() {
-        connection.chooseDirectory { source in
-            if !self.sources.contains(where: { $0.path == source.path }) { self.sources.append(source) }
-        }
+    func addSource(undoManager: UndoManager?) {
+        connection.chooseDirectory { [weak self] in self?.add([$0], undoManager: undoManager) }
     }
-    func removeSource(_ id: UUID) { if sources.count > 1 { sources.removeAll { $0.id == id } } }
+    func dropSources(_ urls: [URL], undoManager: UndoManager?) {
+        connection.localSources(urls) { [weak self] in self?.add($0, undoManager: undoManager) }
+    }
+    func canRemoveSources(_ ids: Set<UUID>) -> Bool { SourceListEdit.removing(ids, from: sources) != nil }
+
+    /// Removal is undoable; redo removes the same sources again.
+    func removeSources(_ ids: Set<UUID>, undoManager: UndoManager?) {
+        guard let edit = SourceListEdit.removing(ids, from: sources) else { return }
+        sources = edit.sources
+        undoManager?.registerUndo(withTarget: self) { store in
+            store.restoreSources(edit.removals, undoManager: undoManager)
+        }
+        undoManager?.setActionName(String(localized: "Quelle entfernen"))
+    }
+
+    private func restoreSources(_ removals: [SourceListEdit.Removal], undoManager: UndoManager?) {
+        sources = SourceListEdit.restoring(removals, into: sources)
+        let ids = Set(removals.map(\.source.id))
+        undoManager?.registerUndo(withTarget: self) { store in store.removeSources(ids, undoManager: undoManager) }
+        undoManager?.setActionName(String(localized: "Quelle entfernen"))
+    }
+
+    private func add(_ candidates: [BackupSource], undoManager: UndoManager?) {
+        let updated = SourceListEdit.adding(candidates, to: sources)
+        let added = Set(updated.map(\.id)).subtracting(sources.map(\.id))
+        guard !added.isEmpty else { return }
+        sources = updated
+        undoManager?.registerUndo(withTarget: self) { store in store.removeSources(added, undoManager: undoManager) }
+        undoManager?.setActionName(String(localized: "Quelle hinzufügen"))
+    }
     func save(completed: @escaping () -> Void) {
         do {
             let updated = try BackupPlan(

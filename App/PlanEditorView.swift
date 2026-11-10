@@ -4,6 +4,8 @@ import SwiftUI
 struct PlanEditorView: View {
     @Environment(PlanEditorStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.undoManager) private var undoManager
+    @State private var selection = Set<UUID>()
 
     var body: some View {
         @Bindable var store = store
@@ -12,21 +14,30 @@ struct PlanEditorView: View {
                 TextField("Name", text: $store.name)
                 Toggle("Backup-Plan aktiv", isOn: $store.enabled)
                 Section("Quellen") {
-                    ForEach(store.sources) { source in
-                        LabeledContent {
-                            Button("Entfernen", systemImage: "minus") { store.removeSource(source.id) }
-                                .help("Quelle entfernen").accessibilityLabel(Text("Quelle entfernen")).disabled(
-                                    store.sources.count <= 1)
-                        } label: {
-                            Label(source.path, systemImage: "folder").lineLimit(1).truncationMode(.middle).help(
-                                source.path)
-                        }
-                        .contextMenu {
-                            Button("Quelle entfernen") { store.removeSource(source.id) }.disabled(
-                                store.sources.count <= 1)
+                    List(selection: $selection) {
+                        ForEach(store.sources) { source in
+                            Label(source.path, systemImage: "folder").lineLimit(1).truncationMode(.middle)
+                                .help(source.path).tag(source.id)
                         }
                     }
-                    Button("Quelle hinzufügen…") { store.addSource() }
+                    .frame(minHeight: 72, idealHeight: 120)
+                    .accessibilityLabel(Text("Quellen"))
+                    .onDeleteCommand { removeSelection() }
+                    .contextMenu(forSelectionType: UUID.self) { ids in
+                        Button("Quelle entfernen") { store.removeSources(ids, undoManager: undoManager) }
+                            .disabled(!store.canRemoveSources(ids))
+                    }
+                    .dropDestination(for: URL.self) { urls, _ in
+                        store.dropSources(urls, undoManager: undoManager)
+                    }
+                    HStack {
+                        Button("Quelle hinzufügen…") { store.addSource(undoManager: undoManager) }
+                        Button("Entfernen", systemImage: "minus") { removeSelection() }
+                            .help("Quelle entfernen").accessibilityLabel(Text("Quelle entfernen"))
+                            .disabled(!store.canRemoveSources(selection))
+                        Spacer()
+                        Text("Ordner aus dem Finder hierher ziehen").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 Section("Aufbewahrung") {
                     Picker("Aufbewahrung", selection: $store.retention) {
@@ -71,6 +82,11 @@ struct PlanEditorView: View {
             }.padding()
         }.frame(minWidth: 560, minHeight: 400)
             .interactiveDismissDisabled(store.connection.busy)
+    }
+
+    private func removeSelection() {
+        store.removeSources(selection, undoManager: undoManager)
+        selection.formIntersection(store.sources.map(\.id))
     }
 }
 

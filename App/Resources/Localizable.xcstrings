@@ -1307,16 +1307,6 @@
         }
       }
     },
-    "Details anzeigen": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Show details"
-          }
-        }
-      }
-    },
     "Fehler und kritische Zustände werden höchstens einmal täglich gemeldet. Regelmäßige Erfolgsmeldungen bleiben aus.": {
       "localizations": {
         "en": {
@@ -2525,6 +2515,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Background service not enabled. Check MacKopia in Login Items and try again."
+          }
+        }
+      }
+    },
+    "Speicherziele anzeigen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Destinations"
+          }
+        }
+      }
+    },
+    "Aktivität anzeigen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Activity"
+          }
+        }
+      }
+    },
+    "Quelle hinzufügen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Source"
+          }
+        }
+      }
+    },
+    "Ordner aus dem Finder hierher ziehen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag folders here from the Finder"
           }
         }
       }

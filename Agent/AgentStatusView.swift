@@ -10,7 +10,10 @@ struct AgentStatusView: View {
             } else if store.state?.restore?.phase == .running {
                 Label("Wiederherstellung läuft", systemImage: "arrow.counterclockwise")
                 ProgressView().accessibilityLabel(Text("Wiederherstellung läuft"))
-                Button("Abbrechen") { store.cancelRestore() }
+                HStack {
+                    Button("Abbrechen") { store.cancelRestore() }
+                    Button("Wiederherstellung anzeigen") { store.openApp(.restore) }
+                }
             } else if let id = store.state?.activePlanID {
                 Label("Backup läuft", systemImage: "arrow.triangle.2.circlepath")
                 ProgressView(value: store.state?.progress?.fractionCompleted)
@@ -21,7 +24,11 @@ struct AgentStatusView: View {
                     LabeledContent(plan.name) { Button("Jetzt sichern") { store.run(plan.id) } }
                 }
                 if store.state?.issue != nil {
-                    Label("Aktion erforderlich", systemImage: "exclamationmark.triangle")
+                    LabeledContent {
+                        Button("Details anzeigen") { store.openApp(.overview) }
+                    } label: {
+                        Label("Aktion erforderlich", systemImage: "exclamationmark.triangle")
+                    }
                 }
             } else {
                 Label("Noch keine Backups eingerichtet", systemImage: "info.circle")
@@ -54,6 +61,8 @@ struct AgentStatusView: View {
 
             }
             Divider()
+            Button("Wiederherstellen…") { store.openApp(.restore) }.disabled(store.unavailable)
+            Button("Aktivität anzeigen") { store.openApp(.activity) }
             Button("MacKopia öffnen") { store.openApp() }
         }
         .padding()

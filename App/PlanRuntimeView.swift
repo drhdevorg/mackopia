@@ -75,7 +75,8 @@ struct PlanRuntimeView: View {
         case .openFullDiskAccess: String(localized: "Festplattenvollzugriff öffnen…")
         case .enableBackgroundService: String(localized: "Hintergrunddienst aktivieren")
         case .runVerification: String(localized: "Prüfen")
-        default: String(localized: "Details anzeigen")
+        case .reviewDestination, .enterPassword: String(localized: "Speicherziele anzeigen")
+        case .reviewActivity, .reviewDiagnostics: String(localized: "Aktivität anzeigen")
         }
     }
     private func act(_ action: HealthAssessment.Action) {
@@ -84,7 +85,8 @@ struct PlanRuntimeView: View {
         case .openFullDiskAccess: connection.openPrivacySettings()
         case .enableBackgroundService: connection.enable()
         case .runVerification: connection.send(.verify(runtime.planID))
-        default: connection.showActivity = true
+        case .reviewDestination, .enterPassword: connection.show(.destinations)
+        case .reviewActivity, .reviewDiagnostics: connection.show(.activity)
         }
     }
     private func reasonTitle(_ reason: HealthAssessment.Reason) -> String {

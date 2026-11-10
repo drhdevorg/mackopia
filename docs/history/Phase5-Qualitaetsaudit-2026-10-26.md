@@ -145,3 +145,39 @@ Lese-/Schreibraten durchgehend 0 Bytes/s. Kein Dienst-/Backup-Profil, keine Fort
 und kein vollständiger 60-s-Release-Benchmark. Lokales Artefakt `/tmp/mackopia-p5-idle.trace`,
 Export `/tmp/mackopia-p5-idle-metrics.xml`; keine Trace-/Environmentdaten ins Repository übernommen.
 Export benötigte Instruments-Cache-Freigabe; Sandbox-Versuch scheiterte vor der erfolgreichen Auswertung.
+
+## Archivierte STATUS-Prüfliste (Codex, Stand `794de02`, übernommen 2026-11-10)
+
+- Xcode 27.1 (27A9275), Swift 6.4, arm64; finaler Produktionscode auf obigem Branch.
+- Package-Vollsuite: **557 Tests / 105 Suites bestanden**, echte temporäre lokale/S3-/WebDAV-/SFTP-
+  und Restore-Integration; 164,4 s. Log `/tmp/mackopia-p5-package.log`, keine Compilerwarnungen.
+- 4 neue Cache-/Dienststarttests bestanden: sichere Entfernung, Symlink-/Dateierhalt, unsicherer Root,
+  fehlender Root, wiederholter Dienststart. Bestehender echter Preview-/Restore-Lifecycle ebenfalls grün.
+- Xcode-Wiederaufnahme: **`build test` erfolgreich, 4 Bundle-/Signaturtests bestanden**, keine
+  Compilerwarnungen; unveränderter Produktionscode, Xcode 27.1 / arm64.
+  Log `/tmp/mackopia-p5-build-test-resume.log`, Ergebnis `Run-MacKopia-2026.10.26_15-02-06-+0100.xcresult`.
+- Zuvor `test-without-building` ebenfalls erfolgreich: 4 Tests, 0,207 s;
+  `/tmp/mackopia-p5-test-resume.log`. Beide Wiederaufnahmen außerhalb der Sandbox mit
+  `-parallel-testing-enabled NO`; Ursache des früheren Daemon-Verbindungs-Timeouts nicht isoliert.
+  Keine Scheme-/Signatur-/Entitlement-Änderung nötig. Historischer Exit 65 bleibt im früheren Log
+  `/tmp/mackopia-p5-xcode.log`; direkter damaliger Bundle-Lauf ebenfalls 4 Tests grün.
+- Das Xcode-Testziel enthält Bundle-/Signaturtests, noch keine automatisierten XCUITests.
+- Strikter Swift-Format-Lint und `git diff --check` sauber. App 246 / Agent 126 Katalogeinträge,
+  kein nichtleerer Schlüssel ohne Englisch; neue Restore-Zeile DE/EN.
+- Erster Compile-Versuch: fehlender BackupDomain-Import, vor obiger Vollprüfung korrigiert.
+- Live-UI wieder erreichbar; Nutzerfreigabe für Dienst/Temp-Workflow liegt vor. Registrierung nach
+  `.notFound`-Fix erfolgreich, XPC verbunden. Offline/⌘R/⌘,/Sidebar und ⌘N live geprüft.
+- Finale Package-Suite **559 Tests / 105 Suites grün**, seriell 289,8 s; TLS-1.3-Python explizit gesetzt.
+  `/tmp/mackopia-p5-live-package-serial.log`. Parallele Remote-Fehler bleiben im Audit dokumentiert.
+- Finaler Editor-/Registrierungsstand: **Xcode build test grün**, 4 Bundle-/Signaturtests,
+  `/tmp/mackopia-p5-editors-xcode-final.log`, keine Compilerwarnung. Format/Diff sauber.
+- Neue Regression: `.notFound` darf explizite Registrierung nach Signaturprüfung erreichen;
+  zunächst rot, anschließend grün; echte Systemfehler bleiben typisiert.
+- Neue Sheet-Hosts erhalten Entwürfe bei Verbindungsevents; Name/Ziel nach Quellenwahl live erhalten.
+  ⌘N ersetzt Standard-Neues-Fenster-Befehl. Deutsche Sidebar ohne bisherige Trunkierung.
+- Instruments-App-Idle 30 s: CPU Ø 0,211 %, Peak 4,975 %, Footprint 58,42–58,55 MiB, App-I/O 0 B/s.
+  Vorläufige Messung, kein Agent-/Last-/60-s-Nachweis; Trace und Grenzen im Audit.
+- Temp-Ziel live eingerichtet; ⌘B vom fehlenden FDA-Nachweis sicher blockiert, passende Fehleraktion.
+  Nutzer lehnt FDA-Freigabe ausdrücklich ab; noch kein Live-Backup/-Restore.
+- Vorheriger SFTP-Abschluss und einmalige WebDAV-Prüfablehnung samt unverändert erfolgreicher Diagnose:
+  [Phase-4-Evidenz](history/STATUS-Phase4-SFTP-Abschluss-2026-10-26.md). Im aktuellen Vollauf WebDAV grün.

@@ -12,14 +12,15 @@ final class AgentConnection {
     var registrationMessage: String?
     var showSetup = false
     var showRecovery = false
-    var showActivity = false
-    var showRestore = false
+    /// Window section requested by a command, health action or the menu bar; consumed by the window.
+    var requestedRoute: AppRoute?
     var recoveryKitRepositoryID: UUID?
     var editingPlan: BackupPlan?
     private var client: AgentServiceClient?
     private var registration: AgentServiceRegistration?
     private var commandTask: Task<Void, Never>?
     private var observation: Task<Void, Never>?
+    private var routeObservation: Task<Void, Never>?
     private let preview: Bool
 
     init(preview: Bool = false) {
@@ -28,6 +29,23 @@ final class AgentConnection {
         if let id = Bundle.main.bundleIdentifier, let identity = try? AgentServiceIdentity(appBundleID: id) {
             client = AgentServiceClient(identity: identity)
             registration = AgentServiceRegistration(identity: identity)
+            observeRoutes(AppRoute.notificationName(for: identity))
+        }
+        requestedRoute = AppRoute(arguments: CommandLine.arguments)
+    }
+
+    func show(_ route: AppRoute) { requestedRoute = route }
+
+    /// The menu bar of the background service asks for a section via a payload-free distributed notification.
+    private func observeRoutes(_ name: Notification.Name) {
+        routeObservation = Task { [weak self] in
+            let routes = DistributedNotificationCenter.default().notifications(named: name).map {
+                AppRoute(notificationObject: $0.object)
+            }
+            for await route in routes {
+                guard let route else { continue }
+                self?.requestedRoute = route
+            }
         }
     }
 
@@ -132,24 +150,35 @@ final class AgentConnection {
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
         guard panel.runModal() == .OK, let selected = panel.url else { return }
+        localSources([selected]) { if let source = $0.first { completion(source) } }
+    }
+
+    /// Resolves picked or dropped folders off the main actor. Anything that is not a local directory with a
+    /// volume UUID is rejected as a whole, so a drop never adds a partial or unidentifiable selection.
+    func localSources(_ urls: [URL], completion: @escaping ([BackupSource]) -> Void) {
+        let urls = Array(urls.prefix(SourceListEdit.maximumSources))
+        guard !urls.isEmpty else { return }
         Task {
             do {
-                let source = try await Task.detached {
-                    let url = selected.resolvingSymlinksInPath()
-                    let values = try url.resourceValues(forKeys: [
-                        .isDirectoryKey, .volumeUUIDStringKey, .volumeNameKey, .volumeIsRemovableKey, .volumeIsLocalKey,
-                    ])
-                    guard values.isDirectory == true, values.volumeIsLocal == true, let uuid = values.volumeUUIDString
-                    else {
-                        throw LocalServiceIssue.destination
+                let sources = try await Task.detached {
+                    try urls.map { selected in
+                        guard selected.isFileURL else { throw LocalServiceIssue.destination }
+                        let url = selected.resolvingSymlinksInPath()
+                        let values = try url.resourceValues(forKeys: [
+                            .isDirectoryKey, .volumeUUIDStringKey, .volumeNameKey, .volumeIsRemovableKey,
+                            .volumeIsLocalKey,
+                        ])
+                        guard values.isDirectory == true, values.volumeIsLocal == true,
+                            let uuid = values.volumeUUIDString
+                        else { throw LocalServiceIssue.destination }
+                        return try BackupSource(
+                            path: url.path,
+                            volume: VolumeIdentity(
+                                uuid: uuid, name: values.volumeName ?? "Volume",
+                                isRemovable: values.volumeIsRemovable ?? false, isNetwork: false))
                     }
-                    return try BackupSource(
-                        path: url.path,
-                        volume: VolumeIdentity(
-                            uuid: uuid, name: values.volumeName ?? "Volume",
-                            isRemovable: values.volumeIsRemovable ?? false, isNetwork: false))
                 }.value
-                completion(source)
+                completion(sources)
             } catch { message = Self.description(.destination) }
         }
     }

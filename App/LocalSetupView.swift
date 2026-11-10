@@ -70,6 +70,7 @@ struct LocalSetupView: View {
                             directoryLabel(store.source)
                             Button("Quelle auswählen…") { store.selectSource() }
                         }
+                        .dropDestination(for: URL.self) { urls, _ in store.dropSource(urls) }
                     }
                 }
                 if store.needsDestination {

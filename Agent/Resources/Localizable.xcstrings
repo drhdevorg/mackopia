@@ -1278,6 +1278,36 @@
           }
         }
       }
+    },
+    "Wiederherstellung anzeigen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Restore"
+          }
+        }
+      }
+    },
+    "Wiederherstellen…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore…"
+          }
+        }
+      }
+    },
+    "Aktivität anzeigen": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Activity"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

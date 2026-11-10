@@ -95,6 +95,11 @@ final class LocalSetupStore {
                     && (!create || (password.count >= 12 && password == confirmation))))
     }
     func selectSource() { connection.chooseDirectory { self.sourceSelection = $0 } }
+    /// The setup creates a single-source plan, so only a single dropped folder is accepted.
+    func dropSource(_ urls: [URL]) {
+        guard urls.count == 1 else { return }
+        connection.localSources(urls) { if let source = $0.first { self.sourceSelection = source } }
+    }
     func selectDestination() { connection.chooseDirectory { self.destinationSelection = $0 } }
     func generatePassword() {
         password = UUID().uuidString + UUID().uuidString; confirmation = password; revealPassword = true
