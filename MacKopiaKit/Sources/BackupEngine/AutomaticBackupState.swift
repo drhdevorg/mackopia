@@ -1,3 +1,4 @@
+import BackupDomain
 import Foundation
 
 package enum AutomaticBackupState: Sendable, Equatable {
@@ -11,5 +12,7 @@ package enum AutomaticBackupIssue: Sendable, Equatable {
     case backupFailed(planID: UUID), admissionRejected(planID: UUID)
     case testRestoreFailed(planID: UUID), verificationFailed(planID: UUID), maintenanceFailed(planID: UUID)
     case ejectionFailed(planID: UUID)
+    /// An explicit check that never ran, with the fixed reason the user can act on.
+    case checkNotStarted(planID: UUID, reason: LocalServiceIssue)
     case suspiciousSnapshot(planID: UUID, runID: UUID)
 }

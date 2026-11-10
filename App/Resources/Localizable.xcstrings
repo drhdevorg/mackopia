@@ -2668,6 +2668,16 @@
           }
         }
       }
+    },
+    "Noch kein Backup zum Prüfen. Sichere zuerst und starte die Prüfung danach.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no backup to verify yet. Back up first, then start the verification."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

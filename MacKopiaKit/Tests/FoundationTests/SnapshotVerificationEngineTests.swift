@@ -1,8 +1,9 @@
 import BackupDomain
-import BackupEngine
 import Foundation
 import Persistence
 import Testing
+
+@testable import BackupEngine
 
 struct SnapshotVerificationEngineTests {
     @Test func completedCheckSurvivesReopenAndFeedsHealth() async throws {
@@ -54,6 +55,16 @@ struct SnapshotVerificationEngineTests {
         }
     }
 
+    @Test func checkWithoutSuccessfulBackupReportsMissingSnapshot() async throws {
+        let fixture = try await VerificationEngineFixture()
+        defer { fixture.remove() }
+        let verifier = VerificationProbe()
+        await #expect(throws: BackupOperationError.snapshotMissing) {
+            try await fixture.engine(verifier).attemptVerification(planID: fixture.base.plan.id)
+        }
+        #expect(await verifier.ids.isEmpty)
+    }
+
     @Test func blockedPreflightAndInvalidOptionsDoNotInventEvidence() async throws {
         let fixture = try await VerificationEngineFixture(sourceAccess: .denied)
         defer { fixture.remove() }
@@ -61,6 +72,11 @@ struct SnapshotVerificationEngineTests {
         let verifier = VerificationProbe()
         let engine = fixture.engine(verifier)
         #expect(try await engine.verify(planID: fixture.base.plan.id) == nil)
+        guard case .declined(let report) = try await engine.attemptVerification(planID: fixture.base.plan.id) else {
+            Issue.record("A blocked preflight must report its reason")
+            return
+        }
+        #expect(LocalBackupService.failure(for: report) == .permissions)
         for percent in [0, 101] {
             await #expect(throws: ConfigStoreError.invalidConfiguration) {
                 try await engine.verify(planID: fixture.base.plan.id, filesPercent: percent)

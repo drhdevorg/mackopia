@@ -33,7 +33,11 @@ extension AutomaticBackupRuntime {
         let result = await task.result
         postBackupTask = nil
         if case .failure(let error) = result, !(error is CancellationError), !task.isCancelled {
-            await issue(.verificationFailed(planID: id))
+            if let reason = error as? LocalServiceIssue, reason != .verificationFailed {
+                await issue(.checkNotStarted(planID: id, reason: reason))
+            } else {
+                await issue(.verificationFailed(planID: id))
+            }
         }
         await activity(nil)
         await changed()

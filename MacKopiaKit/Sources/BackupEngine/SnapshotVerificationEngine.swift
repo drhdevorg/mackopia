@@ -30,11 +30,30 @@ package actor SnapshotVerificationEngine {
         self.now = now
     }
 
+    /// Why an attempt produced no new evidence, so explicit checks can name the next step.
+    package enum Attempt: Sendable {
+        case recorded(VerificationResult)
+        /// Protected preflight declined before any command ran.
+        case declined(BackupPreflightReport)
+        /// A test restore sample could not decide; existing evidence stays unchanged.
+        case inconclusive
+
+        var result: VerificationResult? { if case .recorded(let result) = self { result } else { nil } }
+    }
+
     /// Nil means protected preflight declined the attempt. A cancelled process creates no trust evidence.
     /// A failed command is recorded before its sanitized error is returned; callers must also surface storage errors.
     package func verify(
         planID: UUID, filesPercent: Int = 1, validFor: Duration = .seconds(7 * 24 * 60 * 60)
     ) async throws -> VerificationResult? {
+        try await attemptVerification(planID: planID, filesPercent: filesPercent, validFor: validFor).result
+    }
+
+    /// Like `verify`, but keeps the preflight report of a declined attempt. Throws
+    /// `BackupOperationError.snapshotMissing` when no successful backup exists to verify.
+    package func attemptVerification(
+        planID: UUID, filesPercent: Int = 1, validFor: Duration = .seconds(7 * 24 * 60 * 60)
+    ) async throws -> Attempt {
         try await execute(planID: planID, filesPercent: filesPercent, validFor: validFor, kind: .snapshotVerify)
     }
 
@@ -43,12 +62,12 @@ package actor SnapshotVerificationEngine {
         planID: UUID, validFor: Duration = .seconds(30 * 24 * 60 * 60)
     ) async throws -> VerificationResult? {
         guard restorer != nil else { throw BackupOperationError.operationFailed }
-        return try await execute(planID: planID, filesPercent: 1, validFor: validFor, kind: .testRestore)
+        return try await execute(planID: planID, filesPercent: 1, validFor: validFor, kind: .testRestore).result
     }
 
     private func execute(
         planID: UUID, filesPercent: Int, validFor: Duration, kind: VerificationResult.Kind
-    ) async throws -> VerificationResult? {
+    ) async throws -> Attempt {
         guard !active else { throw RepositoryOperationError.repositoryBusy }
         guard (1...100).contains(filesPercent), validFor > .zero, validFor <= .seconds(31 * 24 * 60 * 60) else {
             throw ConfigStoreError.invalidConfiguration
@@ -110,7 +129,10 @@ package actor SnapshotVerificationEngine {
                 await attempt.finish(at: now())
                 return conclusive
             }
-            guard case .completed(let conclusive, _) = execution, conclusive else { return nil }
+            switch execution {
+            case .notStarted(let report): return .declined(report)
+            case .completed(let conclusive, _): guard conclusive else { return .inconclusive }
+            }
         } catch {
             if Task.isCancelled || error is CancellationError { throw CancellationError() }
             if let startedAt = await attempt.startedAt {
@@ -125,9 +147,10 @@ package actor SnapshotVerificationEngine {
             throw JobAdmissionError.configurationChanged
         }
         guard let startedAt = await attempt.startedAt else { throw BackupOperationError.operationFailed }
-        return try await record(
-            plan: plan, startedAt: startedAt, endedAt: await attempt.endedAt,
-            validFor: validFor, kind: kind, filesPercent: filesPercent, outcome: .succeeded)
+        return .recorded(
+            try await record(
+                plan: plan, startedAt: startedAt, endedAt: await attempt.endedAt,
+                validFor: validFor, kind: kind, filesPercent: filesPercent, outcome: .succeeded))
     }
 
     private func record(

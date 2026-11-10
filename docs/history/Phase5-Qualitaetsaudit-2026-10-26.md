@@ -234,5 +234,7 @@ Builds liefen mit `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
   heißt „Integritätsprüfung läuft“ statt „Backup wird vorbereitet“ (`ActiveWork`).
   Live nachgeprüft: Label korrekt; dieser Befund selbst bleibt offen, weil eine vor dem Kopia-Aufruf gescheiterte
   Prüfung keinen Nachweis speichert (kein Backup/kein Ziel) und die Meldung dennoch auf Aktivität verweist.
+  Danach behoben: nicht gestartete Prüfung meldet ihren Grund (Ziel/Rechte/Schlüsselbund/Bedingungen bzw.
+  `noBackupToVerify` mit „Jetzt sichern“); live bestätigt für nicht erreichbares Ziel → „Speicherziele anzeigen“.
 - Ein SecurityAgent-Dialog erschien während der Prüfung (vermutlich Schlüsselbund-Freigabe für neues Agent-Binary);
   nicht bedient, dem Nutzer gemeldet.
