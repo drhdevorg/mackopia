@@ -2558,6 +2558,16 @@
           }
         }
       }
+    },
+    "Hintergrunddienst wartet auf deine Freigabe. Erlaube MacKopia in den Systemeinstellungen unter Anmeldeobjekte im Hintergrund und verbinde dich dann erneut.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The background service is waiting for your approval. Allow MacKopia in the background under Login Items in System Settings, then reconnect."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
