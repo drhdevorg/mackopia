@@ -10,8 +10,11 @@ final class AgentAppDelegate: NSObject, NSApplicationDelegate {
     private let server = AgentServiceServer()
     private var service: LocalBackupService?
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "MacKopia", category: "XPC")
+    @ObservationIgnored private var termination: (any DispatchSourceSignal)?
+    @ObservationIgnored private var terminating = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        observeTermination()
         Task {
             do {
                 guard let agentID = Bundle.main.bundleIdentifier, agentID.hasSuffix(".Agent") else {
@@ -89,6 +92,24 @@ final class AgentAppDelegate: NSObject, NSApplicationDelegate {
                 logger.error("Backup service unavailable; check installation and service permissions")
             }
         }
+    }
+
+    /// launchd stops the job with SIGTERM (logout, disabled login item, update), which would end the process
+    /// at once. Kopia children run in their own process group and would outlive it, so route the signal
+    /// through the normal termination path that cancels and reaps them before exiting.
+    private func observeTermination() {
+        signal(SIGTERM, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        // A repeated signal must not start a second shutdown while the first one is still reaping.
+        source.setEventHandler { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, !self.terminating else { return }
+                self.terminating = true
+                NSApp.terminate(nil)
+            }
+        }
+        source.resume()
+        termination = source
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

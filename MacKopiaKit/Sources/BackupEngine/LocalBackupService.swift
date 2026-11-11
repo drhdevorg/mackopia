@@ -81,6 +81,11 @@ public actor LocalBackupService {
             Logger(subsystem: "com.example.MacKopia", category: "Restore")
                 .error("Abandoned preview cache could not be cleaned; check cache permissions")
         }
+        // Before any new Kopia command: an agent that died without its shutdown left its children running.
+        if await KopiaOrphanReaper(executable: executable, homeDirectory: home).reap() > 0 {
+            Logger(subsystem: "com.example.MacKopia", category: "Process")
+                .notice("Stopped Kopia processes left behind by a previous background service")
+        }
         switch try await store.load() {
         case .loaded(let config): configuration = config
         case .safeMode: issue = .safeMode
