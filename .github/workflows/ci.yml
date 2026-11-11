@@ -65,6 +65,16 @@ jobs:
         timeout-minutes: 30
         env:
           MACKOPIA_REQUIRE_KOPIA_INTEGRATION: "1"
+          MACKOPIA_TEST_ARTIFACTS: ${{ runner.temp }}/test-artifacts
         run: ./Scripts/run-package-tests.sh
+      - name: Upload remote lifecycle logs
+        # Kopia and fixture logs of the remote lifecycle tests; those tests assert the files hold no test secret.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote-lifecycle-logs
+          path: ${{ runner.temp }}/test-artifacts
+          if-no-files-found: ignore
+          retention-days: 7
       - name: App build, bundle layout and ad-hoc signature tests
         run: xcodebuild -scheme MacKopia -destination 'platform=macOS' build test

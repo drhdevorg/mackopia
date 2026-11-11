@@ -22,7 +22,10 @@ struct WebDAVFixture {
             "FIXTURE_USER": username, "FIXTURE_PASSWORD": password,
         ]
         process.standardInput = control; process.standardOutput = readiness;
-        process.standardError = FileHandle.nullDevice
+        // Tracebacks only (request logging is off); kept as a CI artifact when the run fails.
+        let stderr = root.appendingPathComponent("fixture-stderr.log")
+        FileManager.default.createFile(atPath: stderr.path, contents: nil, attributes: [.posixPermissions: 0o600])
+        process.standardError = try FileHandle(forWritingTo: stderr)
         try process.run()
         do {
             let fd = readiness.fileHandleForReading.fileDescriptor

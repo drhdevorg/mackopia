@@ -13,6 +13,7 @@ struct S3ServiceIntegrationTests {
     @Test func createBackupRestoreReconnectAndRejectWrongCredentials() async throws {
         let root = try KopiaProcessTests().temporaryRoot().resolvingSymlinksInPath()
         defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestArtifacts.preserveLogs(from: root, as: "s3") }
         let fixture = try await S3Fixture(root: root)
         defer { fixture.close() }
         let source = root.appendingPathComponent("source")
@@ -166,6 +167,7 @@ struct S3ServiceIntegrationTests {
     @Test func accessKeysWithoutSessionTokenCanCreateAndReopen() async throws {
         let root = try KopiaProcessTests().temporaryRoot().resolvingSymlinksInPath()
         defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestArtifacts.preserveLogs(from: root, as: "s3") }
         let fixture = try await S3Fixture(root: root, useSessionToken: false)
         defer { fixture.close() }
         let source = root.appendingPathComponent("source")
