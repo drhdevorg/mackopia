@@ -105,7 +105,11 @@ final class AgentAppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated {
                 guard let self, !self.terminating else { return }
                 self.terminating = true
-                NSApp.terminate(nil)
+                // Not from inside this main-queue block: `.terminateLater` spins a nested event loop, and the
+                // main queue does not drain re-entrantly, so the main-actor shutdown task would never run.
+                RunLoop.main.perform(inModes: [.common]) {
+                    MainActor.assumeIsolated { NSApp.terminate(nil) }
+                }
             }
         }
         source.resume()

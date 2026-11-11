@@ -66,7 +66,10 @@ CI-Fixes über [PR #9](https://github.com/drhdevorg/mackopia/pull/9) auf `main` 
   CI lädt bei Fehlschlag Kopia-Logs/Fixture-stderr hoch (7 Tage). Hang-Guards für XPC (30 s)/Dienst (120 s).
 - Audit-Befund behoben (`claude/p5-orphan-kopia`): verwaiste Kopia-Kinder nach Agent-Abbruch. Agent leitet SIGTERM
   in den geordneten Shutdown; Dienststart beendet nur eigene Waisen (`KopiaOrphanReaper`, PROJEKT.md §17 2026-11-11).
-  582 Tests/109 Suites, nur die 6 TLS-Suites rot; Xcode `build test` grün, Lint sauber. SIGTERM-Pfad live offen.
+  582 Tests/109 Suites, nur die 6 TLS-Suites rot; Xcode `build test` grün, Lint sauber.
+  Live: erster SIGTERM-Pfad hing (terminate aus Main-Queue-Block → Shutdown-Task startet nie); behoben über
+  `RunLoop.main.perform`, AppKit-Repro alt hängt/neu Exit 0. Live-Nachweis im registrierten Agent offen.
+  Gotcha: Freigabe aus/an hinterlässt launchd-Job mit alter BTM-UUID (EX_CONFIG); „Hintergrunddienst aktivieren“ repariert.
 - Details, Live-Fehler und Neubau-Ablauf (Freigabe aus/an, „Hintergrunddienst aktivieren“):
   [Archiv 2026-11-10](history/STATUS-Phase5-Pagination-2026-11-10.md), [Phase-5-Audit](history/Phase5-Qualitaetsaudit-2026-10-26.md).
 
