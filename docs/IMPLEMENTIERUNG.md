@@ -68,6 +68,7 @@ Alte Phasen-/Batch-Nummern in Kommentaren und Protokollen sind historische Refer
 - XPC pinnt exakte Signing-ID und CodeDirectory-Hash aus validiertem App-/Agent-Bundle.
 - Eigener laufender Code muss zum geprüften Disk-Siegel passen. Kein Team-ID-Zwang und kein ungeprüfter Transport.
 - Gemeinsame Repo-Reservierung bis zum vollständigen Cancel-/Prozess-/Server-Cleanup halten.
+- Agent-SIGTERM → geordneter Shutdown; Dienststart beendet verwaiste eigene Kopia-Prozesse (`KopiaOrphanReaper`).
 - Frische Konfiguration, Preflight, Volume-UUIDs und Live-Laufwerksschutz vor realen Operationen prüfen.
 - Quellen ohne ausreichenden FDA-/TCC-Nachweis nicht freigeben. Andere unabhängige Implementierung darf weitergehen.
 - Restore überschreibt nie still; Wartung behält Kopias Sicherheitsdefaults. Keine unbestätigten destruktiven Kommandos.
