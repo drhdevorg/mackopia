@@ -13,6 +13,7 @@ struct SFTPServiceIntegrationTests {
     @Test func createBackupRestoreReconnectAndRejectWrongCredentials() async throws {
         let root = try KopiaProcessTests().temporaryRoot().resolvingSymlinksInPath()
         defer { try? FileManager.default.removeItem(at: root) }
+        defer { TestArtifacts.preserveLogs(from: root, as: "sftp") }
         let fixture = try await SFTPFixture(root: root)
         defer { fixture.close() }
         let source = root.appendingPathComponent("source")
