@@ -19,7 +19,7 @@ struct WebDAVFixture {
         ]
         process.environment = [
             "HOME": root.path, "TMPDIR": root.path, "PYTHONDONTWRITEBYTECODE": "1",
-            "FIXTURE_USER": username, "FIXTURE_PASSWORD": password,
+            "FIXTURE_USER": username, "FIXTURE_PASSWORD": password, "FIXTURE_TRACE": "1",
         ]
         process.standardInput = control; process.standardOutput = readiness;
         // Tracebacks only (request logging is off); kept as a CI artifact when the run fails.
