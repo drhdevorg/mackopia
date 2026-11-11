@@ -28,9 +28,11 @@ struct LocalServiceTransportTests {
                 return nil
             }, cancellationHandler: { _ in exchange.finish(.failure(AgentServiceError.unavailable)) })
         defer { session.cancel(reason: "Test complete") }
+        // Hang guard only: the in-process round trip can wait several seconds for a thread while the whole
+        // suite starts in parallel on CI.
         let timeout = Task {
             do {
-                try await Task.sleep(for: .seconds(5))
+                try await Task.sleep(for: .seconds(30))
                 exchange.finish(.failure(AgentServiceError.timedOut))
             } catch {}
         }

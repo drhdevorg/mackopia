@@ -43,6 +43,8 @@ struct LocalServiceIntegrationTests {
                 password: password, create: true)
         }
         try await service.run(plan.id)
+        // Hang guards, not latency checks: backup, verification and test restore share a saturated CI runner
+        // with the parallel suite, so they wait as long as the restore and WebDAV lifecycle tests.
         let completed = try await withThrowingTaskGroup(of: LocalServiceState.self) { group in
             group.addTask {
                 var snapshot = try await service.state()
@@ -50,7 +52,7 @@ struct LocalServiceIntegrationTests {
                 return snapshot
             }
             group.addTask {
-                try await Task.sleep(for: .seconds(45)); throw LocalServiceIssue.unavailable
+                try await Task.sleep(for: .seconds(120)); throw LocalServiceIssue.unavailable
             }
             defer { group.cancelAll() }
             return try #require(try await group.next())
@@ -71,7 +73,7 @@ struct LocalServiceIntegrationTests {
         try await service.savePlan(automatic)
         let next = try #require(try await service.state().plans.first?.nextRun)
         time.advance(next.timeIntervalSince(time.date) + 1)
-        try await waitForRuntime(timeout: .seconds(45)) {
+        try await waitForRuntime(timeout: .seconds(120)) {
             let value = try await service.state()
             return value.runs.count == 2 && value.activePlanID == nil
         }
@@ -80,7 +82,7 @@ struct LocalServiceIntegrationTests {
         #expect(scheduled.runs.first?.trigger == .interval(minutes: 1))
         // Explicit checks also use the owner's serial drain, and keep their durable evidence.
         try await service.verify(plan.id)
-        try await waitForRuntime(timeout: .seconds(45)) { try await service.state().activePlanID == nil }
+        try await waitForRuntime(timeout: .seconds(120)) { try await service.state().activePlanID == nil }
         #expect(try await service.state().plans.first?.verification?.filesPercent == 1)
         let snapshot = try #require(run.sources.first)
         let paths = try KopiaRepositoryPaths(repositoryID: repository.id, homeDirectory: root)
