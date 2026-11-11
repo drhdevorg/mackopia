@@ -1,19 +1,19 @@
 # Status & nächster Auftrag
 
-Stand: 2026-11-10. Einstieg: AGENTS.md, dieser Status, PROJEKT.md §14 und IMPLEMENTIERUNG.md.
+Stand: 2026-11-11. Einstieg: AGENTS.md, dieser Status, PROJEKT.md §14 und IMPLEMENTIERUNG.md.
 Historische Evidenz bleibt im [Archiv](history/README.md).
 
 ## Aktuelle Produktphase
 
-**Phase 5: Bedienlücken geschlossen, Restore-Pagination umgesetzt; Live-Audit offen.**
-Phase 1–4 integriert; Phase-5-Bedienlücken über [PR #8](https://github.com/drhdevorg/mackopia/pull/8) auf `main` (`19a0a6d`).
-Aktueller Arbeitsbranch: `claude/p5-restore-pagination` (Basis `main` @ `19a0a6d`). Phase 5 bleibt offen.
+**Phase 5: Bedienlücken geschlossen, Restore-Pagination auf `main`; UI-/A11y-/Performance-Audit offen.**
+Phase 1–4 integriert; Bedienlücken über [PR #8](https://github.com/drhdevorg/mackopia/pull/8), Pagination und
+CI-Fixes über [PR #9](https://github.com/drhdevorg/mackopia/pull/9) auf `main` (`43478ae`). Phase 5 bleibt offen.
 
 ## In progress
 
 | Agent | Auftrag | Branch | Dateien/Module |
 |---|---|---|---|
-| Claude | Restore-Browser-Pagination (Verzeichnisse seitenweise, größerer Katalog, Suchtreffer auf ihrer Seite) | `claude/p5-restore-pagination` | BackupEngine/RestoreBrowser, LocalServiceRestore, AgentProtocol, KopiaServerClient, App/Restore*, docs/ |
+| — | frei | — | — |
 
 ## Verbindliche Entscheidungen
 
@@ -52,46 +52,20 @@ Aktueller Arbeitsbranch: `claude/p5-restore-pagination` (Basis `main` @ `19a0a6d
 
 ## Prüfung dieses Codezustands
 
-- Lokal (Xcode 27.1 / Swift 6.4 / arm64) bleiben 6 KopiaServer-Netzwerksuites rot (`FixtureError.startFailed`):
-  `native_tls_fixture.py` braucht TLS 1.3, hier gibt es nur LibreSSL-Python; mit `MACKOPIA_TEST_PYTHON` auf
-  OpenSSL-3-Python ausführen. GitHub-CI (`xcode-27`) ist auf `main` grün; Watchdog/30-Minuten-Timeout gegen Hänger.
-- **Live 2026-11-10 geprüft (temp-Plan, Debug-Build):** Finder-Drop mehrerer Ordner, ⌫, Schutz der letzten Quelle,
-  ⌘Z/⇧⌘Z mit Rückkehr an alte Position; Route per verteilter Mitteilung (laufende App, unbekannter Wert ignoriert)
-  und per Startargument (Kaltstart); „Aktivität anzeigen“ nach fehlgeschlagener Prüfung. Zwei Live-Fehler behoben:
-  Drop erreicht in gruppierter `Form` nur Section/Form (Test-Harness: List/ForEach-Drop feuert dort nie) und
-  Startroute wurde vom Fensteraufbau überschrieben (jetzt in `.task`). Menüleisten-Fenster selbst nicht bedienbar
-  (Computer Use findet den Agent nicht); Routen-Mechanik direkt ausgelöst. Kein XCUITest vorhanden.
-- Behoben: Aktivität zeigt neben Backup-Läufen die jeweils letzte
-  Integritätsprüfung, Testwiederherstellung und Wartung je Plan (`ActivityEntry`, Spalten Vorgang/Plan, Fehler rot
-  mit Symbol); `LocalServiceState.activeWork` unterscheidet Backup/Prüfung/Abschluss/Wartend für Übersicht und
-  Menüleiste. Ältere Prüfungen bleiben ungespeichert (nur letzter Stand je Plan). Offen: Drop-Reihenfolge folgt Finder.
-  Prüfung: 575 Tests, nur die 6 bekannten TLS-Suites rot; WebDAV-Lebenszyklus deckte eine Lese-Reihenfolge-Race in
-  `currentWork()` auf (behoben, danach 3× grün). Xcode `build test` grün, keine Warnung, Lint sauber.
-- Live 2026-11-10 (bc23fe3): neue Spalten und „Integritätsprüfung läuft“ bestätigt. Prüfung, die vor dem
-  Kopia-Aufruf scheitert, speichert absichtlich keinen Nachweis; sie meldet jetzt ihren Grund statt `verificationFailed`
-  (`SnapshotVerificationEngine.attemptVerification`, `AutomaticBackupIssue.checkNotStarted`): Preflight-Ablehnung →
-  dieselbe Zuordnung wie Backups (`LocalBackupService.failure(for:)`, z. B. „Speicherziele anzeigen“), kein erfolgreiches
-  Backup → neues `noBackupToVerify` mit „Jetzt sichern“. Live: Ziel-Fall bestätigt (Temp-Root war gelöscht);
-  „Noch kein Backup zum Prüfen“ nur durch Tests belegt. Vollsuite seriell 577 Tests, nur 6 TLS-Suites rot.
-  Neubau-Ablauf: Freigabe aus/an, dann in der App „Hintergrunddienst aktivieren“, Keychain-Abfrage durch Nutzer.
-- Live behoben: „Hintergrunddienst aktivieren“ zeigt bei `requiresApproval` den Freigabehinweis und repariert ein
-  „enabled“ ohne startbaren launchd-Job (unregister/register, nur ohne Verbindung); 10 Registrierungstests.
-- Vorherige Codex-Evidenz (Registrierung, Editor-Sheets, Instruments-Idle, Temp-Ziel, FDA-Block): Audit unten.
-- **Restore-Pagination (2026-11-10, `claude/p5-restore-pagination`):** `browse` trägt `entryOffset` (Vielfaches von 500)
-  und optional `reveal`; XPC Version 8. Ordner bis 50.000 Einträge, Katalog bis 1.024 Quellen/10.000 Snapshots,
-  Kopia-Verzeichnis-/Manifestantworten bis 32 MiB. Ein Browse liest die Quellen nur noch einmal (Katalog an `resolve`).
-  `RestorePager` (Vor/Zurück, „1–500 von 12.345“, A11y-Labels) erscheint nur bei mehr als einer Seite; Dateitreffer
-  öffnen ihre Seite mit Auswahl. Tests: Browser-Paging/-Grenzen/-Reveal, Request-Validierung, echter Kopia-Ordner mit
-  501 Dateien (zweite Seite, Seite hinter dem Ende abgewiesen, Reveal).
-  Prüfung: Vollsuite seriell 581 Tests/108 Suites, nur die 6 TLS-Suites rot (62× `startFailed`); Xcode `build test`
-  grün (4 Bundle-/Signaturtests), keine Warnung, Lint sauber. Pager live im Fenster noch nicht gesehen.
-- Behoben: WebDAV-Lebenszyklus scheiterte in CI (7× auf PR #9) und lokal sporadisch am Test-Fixture, nicht am Produkt.
-  Ursache laut hochgeladenen Kopia-Logs und Fixture-Trace: Kopia sendet den PROPFIND-Body chunked ohne
-  Content-Length; das Fixture las ihn nicht. HTTP/1.0 schloss danach mit ungelesenen Bytes → RST → `broken pipe`.
-  Jetzt HTTP/1.1 mit Keep-alive (ohne Idle-Timeout, Go hält 90 s), chunked-Decoding nach RFC 9112, Backlog 128,
-  verschwundene Einträge übersprungen, PUT atomar. Der Integrationstest verlangt einen Trace ohne unlesbare Requests.
-- CI lädt bei Fehlschlag Kopia-Logs und Fixture-stderr der Remote-Lebenszyklustests hoch (`MACKOPIA_TEST_ARTIFACTS`,
-  `TestArtifacts`, 7 Tage); die Tests prüfen bereits, dass keine Datei ein Test-Secret enthält.
+- `main` @ `43478ae`, GitHub-CI (`xcode-27`) grün (Run 42954746079); Watchdog/30-Minuten-Timeout gegen Hänger.
+- Lokal (Xcode 27.1 / Swift 6.4 / arm64): 581 Tests/108 Suites; nur 6 KopiaServer-Netzwerksuites rot
+  (62× `FixtureError.startFailed`): `native_tls_fixture.py` braucht TLS 1.3, hier nur LibreSSL-Python; mit
+  `MACKOPIA_TEST_PYTHON` auf OpenSSL-3-Python ausführen. Xcode `build test` grün, keine Warnung, Lint sauber.
+- Live 2026-11-10 (Debug, Temp-Plan): Finder-Drop/⌫/Undo, Routen (laufend + Kaltstart), Aktivitätsspalten,
+  Prüfgrund „Speicherziele anzeigen“, Dienstaktivierung mit Reparaturpfad. Menüleisten-Fenster nicht bedienbar
+  (Computer Use findet den Agent nicht); Pager und „Noch kein Backup zum Prüfen“ nur automatisiert belegt.
+- Restore-Pagination: Seiten zu 500 (`entryOffset`, `reveal`), XPC Version 8, Ordner ≤50.000 Einträge,
+  Katalog ≤1.024 Quellen/10.000 Snapshots, Kopia-Antworten ≤32 MiB; echter Kopia-Ordner mit 501 Dateien getestet.
+- WebDAV-Test-Fixture (nicht Produkt): Kopia sendet PROPFIND-Bodies chunked; Fixture spricht jetzt HTTP/1.1
+  Keep-alive ohne Idle-Timeout mit RFC-9112-Decoding; Integrationstest verlangt Trace ohne unlesbare Requests.
+  CI lädt bei Fehlschlag Kopia-Logs/Fixture-stderr hoch (7 Tage). Hang-Guards für XPC (30 s)/Dienst (120 s).
+- Details, Live-Fehler und Neubau-Ablauf (Freigabe aus/an, „Hintergrunddienst aktivieren“):
+  [Archiv 2026-11-10](history/STATUS-Phase5-Pagination-2026-11-10.md), [Phase-5-Audit](history/Phase5-Qualitaetsaudit-2026-10-26.md).
 
 ## Offene Live-Nachweise und Grenzen – kein globaler Entwicklungsstopp
 
@@ -113,18 +87,16 @@ Aktueller Arbeitsbranch: `claude/p5-restore-pagination` (Basis `main` @ `19a0a6d
 | Gatekeeper/Updates, Checkpoint 45 statt 15 Minuten | Release | Phase 6: Installationsartefakt prüfen; Checkpoint-Produktentscheidung treffen |
 | Reales SFTP/SSH/Host-Key | Provider-Kompatibilität | Nutzer stellt entbehrlichen Testordner und öffentlichen Host-Key über vertrauenswürdigen Kanal bereit; Agent prüft Create/Connect/Backup/Restore/Schlüsselwechsel |
 
-
 ## Nächster vollständiger Coding-Auftrag
 
 **Phase 5 fortsetzen: zusammenhängender UI-/Accessibility-/Performance-Audit mit Temp-Workflow.**
 
 Einstieg: PROJEKT.md §4–§5, §11–§14 Phase 5, AGENTS.md §7, IMPLEMENTIERUNG.md und Audit oben.
 Native Verbindung und Dienstregistrierung sind positiv belegt; Freigabe für Temp-Workflow liegt vor.
-Fenster/Menüleiste/Shortcuts,
-Fehleraktionen/Remote-Assistenten prüfen; DE/EN, Light/Dark/Kontrast, minimales Fenster, Tastatur/VoiceOver
-mit Screenshots erfassen und Instruments Idle-CPU/Speicher/I/O/Updatefrequenz messen.
-FDA-Freigabe abgelehnt; geschützten Live-Lauf erst nach einer neuen ausdrücklichen Freigabe fortsetzen.
-Temp-Root `/private/tmp/mackopia-live-audit-xp05r3_k` ist gelöscht: für weitere Live-Läufe neues Temp-Ziel einrichten. Danach Quellen-/Snapshot-Pagination; keine spekulativen Frameworks/Entitlements. Registrierung/FDA/Keychain
-nur mit bewussten nötigen Systemfreigaben; reale Provider/Hardware bleiben separat.
+Fenster/Menüleiste/Shortcuts, Fehleraktionen/Remote-Assistenten prüfen; DE/EN, Light/Dark/Kontrast, minimales
+Fenster, Tastatur/VoiceOver mit Screenshots erfassen und Instruments Idle-CPU/Speicher/I/O/Updatefrequenz messen.
+Neues Temp-Ziel einrichten; Pager im Fenster mit >500 Einträgen sichten. Agent-Neubau seit dem letzten Live-Lauf:
+Hintergrundfreigabe aus/an. FDA abgelehnt; geschützten Live-Lauf nur nach neuer ausdrücklicher Freigabe.
+Keine spekulativen Frameworks/Entitlements; reale Provider/Hardware bleiben separat.
 Fertig: belegter integrierter Audit, behobene Befunde mit Tests, relevante Prüfungen und kompakte Übergabe.
 Name/Bundle-Präfix MacKopia / com.example.MacKopia; Lizenzmodell offen.

@@ -16,3 +16,4 @@ Archivierte Aufgaben und Prüfstände sind keine aktuellen Freigaben.
 
 - [Phase-4/SFTP-Abschluss, 2026-10-26](STATUS-Phase4-SFTP-Abschluss-2026-10-26.md): vollständiger Remote-Stand auf main, 553 Package-Tests, WebDAV-Diagnose und Live-Ledger vor Phase 5.
 - [Phase-5-Qualitätsaudit, 2026-10-26](Phase5-Qualitaetsaudit-2026-10-26.md): Cache-/Bedienbefunde, automatisierte Evidenz und gesperrter Live-Audit.
+- [Phase-5-Bedienlücken/Restore-Pagination, 2026-11-10](STATUS-Phase5-Pagination-2026-11-10.md): Live-Nachweise Drop/Undo/Routen/Aktivität, Pagination, WebDAV-Fixture-Ursache und CI-Fix vor dem UI-Audit.
