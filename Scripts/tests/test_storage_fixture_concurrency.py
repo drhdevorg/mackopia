@@ -1,9 +1,12 @@
 """The threaded WebDAV/S3 fixture must answer listings while Kopia renames its own blobs."""
 
 import base64
+import contextlib
+import io
 import http.client
 import importlib.util
 import socket
+import struct
 from pathlib import Path
 import sys
 import tempfile
@@ -78,7 +81,64 @@ class StorageFixtureConcurrencyTests(unittest.TestCase):
                             + "Content-Length: " + str(len(body)) + "\r\n\r\n")
                     connection.sendall(head.encode() + body)
                     reply = connection.recv(64)
-        self.assertTrue(reply.startswith(b"HTTP/1.0 404"), reply)
+        self.assertTrue(reply.startswith(b"HTTP/1.1 404"), reply)
+
+    def test_requests_share_one_persistent_connection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "storage"
+            root.mkdir()
+            with BACKENDS.storage_server(root, "user", "secret", "access", "token", "key") as (port, _):
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+                connection.request("MKCOL", "/blobs/", headers=AUTH)
+                connection.getresponse().read()
+                connection.request("PUT", "/blobs/one", body=b"data", headers=AUTH)
+                connection.getresponse().read()
+                local = connection.sock.getsockname()
+                connection.request("GET", "/blobs/one", headers=AUTH)
+                response = connection.getresponse()
+                self.assertEqual(response.read(), b"data")
+                connection.request("GET", "/missing", headers=AUTH)
+                connection.getresponse().read()
+                connection.request("GET", "/blobs/one", headers={})
+                self.assertEqual(connection.getresponse().status, 401)
+                self.assertEqual(connection.sock.getsockname(), local)
+                connection.close()
+
+    def test_chunked_request_bodies_are_consumed(self):
+        # Kopia's PROPFIND body arrives chunked. Unread chunks used to become a garbage request (400 page) that
+        # corrupted the next response on the same connection.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "storage"
+            root.mkdir()
+            (root / "blobs").mkdir()
+            with BACKENDS.storage_server(root, "user", "secret", "access", "token", "key") as (port, _):
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+                for _ in range(3):
+                    connection.request(
+                        "PROPFIND", "/blobs/", body=iter([b"<?xml version=\"1.0\"?>", b"<propfind/>"]),
+                        headers=AUTH | {"Depth": "1"}, encode_chunked=True)
+                    response = connection.getresponse()
+                    self.assertEqual(response.status, 207)
+                    self.assertIn(b"multistatus", response.read())
+                connection.close()
+
+    def test_client_reset_of_an_idle_connection_is_a_normal_close(self):
+        captured = io.StringIO()
+        with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stderr(captured):
+            root = Path(directory) / "storage"
+            root.mkdir()
+            with BACKENDS.storage_server(root, "user", "secret", "access", "token", "key") as (port, _):
+                connection = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+                connection.request("GET", "/missing", headers=AUTH)
+                connection.getresponse().read()
+                # SO_LINGER 0 closes with RST, as an exiting Kopia process does with its idle connections.
+                connection.sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+                connection.close()
+                follow_up = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+                follow_up.request("GET", "/missing", headers=AUTH)
+                self.assertEqual(follow_up.getresponse().status, 404)
+                follow_up.close()
+        self.assertNotIn("Traceback", captured.getvalue())
 
 
 if __name__ == "__main__":

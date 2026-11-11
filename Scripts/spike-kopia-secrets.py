@@ -10,11 +10,13 @@ from http.server import BaseHTTPRequestHandler
 from loopback_http_server import LoopbackHTTPServer
 import importlib.util
 import json
+import os
 from pathlib import Path
 import secrets
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import threading
 from urllib.parse import parse_qs, quote, unquote, urlsplit
@@ -35,9 +37,21 @@ def storage_server(repository, username, password, access_key, session_token, se
     basic = "Basic " + base64.b64encode((username + ":" + password).encode()).decode()
 
     class Handler(BaseHTTPRequestHandler):
+        # Persistent HTTP/1.1 connections like a production WebDAV server. With HTTP/1.0 the fixture closed every
+        # connection after one response, and Kopia's PROPFIND listings intermittently failed on hosted runners
+        # with "write: broken pipe". Every response sets Content-Length. No idle timeout: a server that closes
+        # idle connections before Go's 90 s client idle timeout races Kopia's reuse of them, and Go does not
+        # retry a non-idempotent PROPFIND. Handler threads are daemons, so shutdown never waits on them.
+        protocol_version = "HTTP/1.1"
+
         def log_message(self, *_):
             # Request headers and URLs must never enter logs.
             pass
+
+        def log_request(self, code="-", size="-"):
+            # Method and status only: no path, query or header can carry a secret here. Used in CI artifacts.
+            if os.environ.get("FIXTURE_TRACE") == "1":
+                sys.stderr.write(f"{self.command} {code} {self.request_version}\n")
 
         def do_OPTIONS(self):
             self.serve(head=True)
@@ -63,14 +77,45 @@ def storage_server(repository, username, password, access_key, session_token, se
         def do_GET(self):
             self.serve(head=False)
 
+        def handle_one_request(self):
+            # A client that exits resets its idle kept-alive connection while the server waits for the next
+            # request line. Like a production server, treat that as a normal close, not a handler error.
+            try:
+                super().handle_one_request()
+            except (ConnectionResetError, BrokenPipeError):
+                self.close_connection = True
+
+        def read_body(self, limit=4 * 1024 * 1024):
+            # Go sends some request bodies, including Kopia's PROPFIND XML, with chunked transfer coding and no
+            # Content-Length (RFC 9112 section 7.1). Leaving those bytes unread made the next "request" garbage
+            # on a kept-alive connection and reset closed connections while Kopia was still writing.
+            if "chunked" in self.headers.get("Transfer-Encoding", "").lower():
+                body = bytearray()
+                while True:
+                    size_line = self.rfile.readline(1024)
+                    size = int(size_line.split(b";", 1)[0].strip() or b"0", 16)
+                    if size == 0:
+                        while self.rfile.readline(1024) not in (b"\r\n", b"\n", b""):
+                            pass  # discard trailer fields
+                        return bytes(body)
+                    if len(body) + size > limit:
+                        self.close_connection = True
+                        return None
+                    body += self.rfile.read(size)
+                    self.rfile.readline(3)  # CRLF after each chunk
+            length = int(self.headers.get("Content-Length", "0") or "0")
+            if not 0 <= length <= limit:
+                self.close_connection = True
+                return None
+            return self.rfile.read(length) if length else b""
+
         def serve(self, head):
             # Read the whole request body before any response. Answering early and closing the socket while
             # the client still sends (Kopia's PROPFIND carries an XML body) breaks its pipe on a busy machine.
-            length = int(self.headers.get("Content-Length", "0") or "0")
-            if not 0 <= length <= 4 * 1024 * 1024:
+            body = self.read_body()
+            if body is None:
                 self.send_error(413)
                 return
-            body = self.rfile.read(length) if length else b""
             path = unquote(urlsplit(self.path).path)
             auth = self.headers.get("Authorization", "")
             if path.startswith("/bucket/"):

@@ -157,6 +157,13 @@ struct WebDAVServiceIntegrationTests {
                 atPath: originalPaths.configurationDirectory.path)
             #expect(!isolated.contains("repository.config"))
             #expect(!isolated.contains(where: { $0.hasPrefix("runtime-") }))
+            // The fixture traces method and status per request. An unparsable "request" means it left part of
+            // a body unread (Kopia's PROPFIND body is chunked) and would corrupt or reset the connection.
+            let trace = try String(contentsOf: root.appendingPathComponent("fixture-stderr.log"), encoding: .utf8)
+            let unexpected = trace.split(separator: "\n").filter {
+                $0.hasPrefix("None ") || $0.hasPrefix("Traceback") || $0.hasPrefix(" ") || $0.contains("Error")
+            }
+            #expect(unexpected.isEmpty, "Fixture trace: \(unexpected.prefix(20).joined(separator: " | "))")
             let enumerator = try #require(
                 FileManager.default.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey]))
             while let file = enumerator.nextObject() as? URL {

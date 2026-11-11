@@ -85,11 +85,13 @@ Aktueller Arbeitsbranch: `claude/p5-restore-pagination` (Basis `main` @ `19a0a6d
   501 Dateien (zweite Seite, Seite hinter dem Ende abgewiesen, Reveal).
   Prüfung: Vollsuite seriell 581 Tests/108 Suites, nur die 6 TLS-Suites rot (62× `startFailed`); Xcode `build test`
   grün (4 Bundle-/Signaturtests), keine Warnung, Lint sauber. Pager live im Fenster noch nicht gesehen.
-- Behoben: sporadische WebDAV-Prüfablehnung (lokal unter Last, CI auf PR #9 reproduzierbar) lag am Test-Fixture.
-  Per temporärer CI-Diagnose: Kopias parallele PROPFIND-Listings scheiterten mit `write: broken pipe`, weil
-  `LoopbackHTTPServer` nur 5 wartende Verbindungen zuließ und macOS weitere zurücksetzt; jetzt 128. Zusätzlich liest das
-  Fixture jeden Request-Body vor der Antwort, überspringt während der Auflistung verschwundene Einträge, schreibt
-  PUT atomar und antwortet bei gleichzeitig gelöschtem Objekt mit 404. Regressionstests in `Scripts/tests`.
+- Behoben: WebDAV-Lebenszyklus scheiterte in CI (7× auf PR #9) und lokal sporadisch am Test-Fixture, nicht am Produkt.
+  Ursache laut hochgeladenen Kopia-Logs und Fixture-Trace: Kopia sendet den PROPFIND-Body chunked ohne
+  Content-Length; das Fixture las ihn nicht. HTTP/1.0 schloss danach mit ungelesenen Bytes → RST → `broken pipe`.
+  Jetzt HTTP/1.1 mit Keep-alive (ohne Idle-Timeout, Go hält 90 s), chunked-Decoding nach RFC 9112, Backlog 128,
+  verschwundene Einträge übersprungen, PUT atomar. Der Integrationstest verlangt einen Trace ohne unlesbare Requests.
+- CI lädt bei Fehlschlag Kopia-Logs und Fixture-stderr der Remote-Lebenszyklustests hoch (`MACKOPIA_TEST_ARTIFACTS`,
+  `TestArtifacts`, 7 Tage); die Tests prüfen bereits, dass keine Datei ein Test-Secret enthält.
 
 ## Offene Live-Nachweise und Grenzen – kein globaler Entwicklungsstopp
 
